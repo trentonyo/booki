@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Camera to OCR</title>
+</head>
+<body>
+<video id="video" width="640" height="480" autoplay></video>
+
+<div>Game time: <span id="game-time"></span></div>
+<table>
+    <thead>
+    <tr>
+        <th>Position</th>
+        <th>Cash</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>First</td>
+        <td id="first-place"></td>
+    </tr>
+    <tr>
+        <td>Second</td>
+        <td id="second-place"></td>
+    </tr>
+    <tr>
+        <td>Third</td>
+        <td id="third-place"></td>
+    </tr>
+    <tr>
+        <td>Fourth</td>
+        <td id="fourth-place"></td>
+    </tr>
+    </tbody>
+</table>
+
+<script>
+    async function startCamera() {
+        const constraints = {
+            video: {
+                width: 2560,
+                height: 1440
+            },
+            performance: {
+                requestDelay: 1000
+            }
+        };
+        const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+
+        // Optional: Display the video stream without sending to the server
+        video.play();
+
+        // Capture frames from the video stream and send to the server
+        const canvas = document.createElement('canvas');
+        canvas.width = constraints.video.width;
+        canvas.height = constraints.video.height;
+        const ctx = canvas.getContext('2d');
+
+        function captureFrame() {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/png');
+
+            fetch('http://localhost:3000/game/thefinals_ranked', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: dataURL
+                })
+            }).then(response => response.json())
+                .then(data => {
+                    document.getElementById('first-place').innerText = data[0].text;
+                    document.getElementById('second-place').innerText = data[1].text;
+                    document.getElementById('third-place').innerText = data[2].text;
+                    document.getElementById('fourth-place').innerText = data[3].text;
+
+                    document.getElementById('game-time').innerText = data[4].text;
+
+                    console.log('first-place box:', data[0].box);
+                    console.log('second-place box:', data[1].box);
+                    console.log('third-place box:', data[2].box);
+                    console.log('fourth-place box:', data[3].box);
+
+                    console.log('game-time box:', data[4].box);
+                })
+                .catch(error => console.error('Error:', error));
+
+            setTimeout(() => {
+                requestAnimationFrame(captureFrame);
+            }, constraints.performance.requestDelay);
+        }
+
+        captureFrame();
+    }
+
+    startCamera();
+</script>
+</body>
+</html>
