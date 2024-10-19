@@ -2,7 +2,8 @@
   "constraints": {
     "width": 2560,
     "height": 1440,
-    "refreshEvery": 1500
+    "refreshEvery": 1500,
+    "invert": true
   },
   "gameState": [
     {

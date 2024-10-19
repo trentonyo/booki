@@ -1,4 +1,6 @@
 import {createScheduler, createWorker, Scheduler} from "tesseract.js";
+import sharp from "sharp";
+import * as fs from "node:fs";
 
 // Define the Rectangle type
 type Rectangle = {
@@ -21,6 +23,7 @@ type Constraints = {
     width: number;
     height: number;
     refreshEvery: number;
+    invert: boolean;
 };
 
 // Define the StateModel type composing Constraints and an array of LandMark
@@ -30,7 +33,10 @@ export type StateModel = {
 };
 
 export async function processGameFrame(dataURL: string, stateModel: StateModel) {
-    const imageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
+    const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
+    const imageBuffer = await sharp(rawImageBuffer)
+        .negate(stateModel.constraints.invert ? {alpha: false} : false)
+        .toBuffer();
 
     const output = {
         text: true,
@@ -38,7 +44,7 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel) 
         layoutBlocks: false,
         hocr: false,
         tsv: false,
-        box: true,
+        box: false,
         unlv: false,
         osd: false,
         pdf: false,
@@ -79,7 +85,7 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel) 
         } : {"rectangle": landMark.rect, "rotateAuto": true}
 
         const result = await schedulers[landMark.charMask || "<NONE>"].addJob("recognize", imageBuffer, options, output);
-        return {name: landMark.name, text: result.data.text, box: result.data.box};
+        return {name: landMark.name, text: result.data.text};
     });
 
     const result = await Promise.all(recognizePromises);
