@@ -8,25 +8,21 @@
     {
       "name": "score_firstCash",
       "rect": {"left": 170, "top": 88, "width": 240, "height": 55},
-      "radians": -0.1047198,
       "charMask": "$+1234567890"
     },
     {
       "name": "score_secondCash",
       "rect": {"left": 170, "top": 143, "width": 240, "height": 55},
-      "radians": -0.1047198,
       "charMask": "$+1234567890"
     },
     {
       "name": "score_thirdCash",
       "rect": {"left": 170, "top": 238, "width": 240, "height": 55},
-      "radians": -0.09599311,
       "charMask": "$+1234567890"
     },
     {
       "name": "score_fourthCash",
       "rect": {"left": 170, "top": 293, "width": 240, "height": 55},
-      "radians": -0.09599311,
       "charMask": "$+1234567890"
     },
     {
