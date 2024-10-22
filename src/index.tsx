@@ -1,10 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import HomeServerComponent from "./components/server/homeServerComponent";
 
 const App = () => (
-  <div>
-      <a href="feed"><h1>Feed</h1></a>
-  </div>
+    <HomeServerComponent />
 );
 
 ReactDOM.render(<App />, document.getElementById('root'));

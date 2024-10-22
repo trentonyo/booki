@@ -15,6 +15,7 @@ type LandMark = {
     rect: Rectangle;
     radians?: number; // rotation is optional
     charMask?: string; // charMask is optional
+    validRegex?: string; // validRegex is optional
 };
 
 // Define the Constraints type

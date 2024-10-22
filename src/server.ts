@@ -14,9 +14,11 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Add this line to serve React's static files
 app.use(express.static(path.join(__dirname, '../dist')));
 
+export type StateModelMap = { [game: string]: StateModel };
+
 // Load in all gamestate models and their char masks to the OCR
-const gameStateModels: { [game: string]: StateModel } = {
-    "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json")
+export const gameStateModels: StateModelMap = {
+    "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json") as StateModel
 }
 
 function initGameStateModels(workers: number) {
@@ -31,6 +33,10 @@ function initGameStateModels(workers: number) {
 
     initWorkerPool(allCharMasks, workers);
 }
+
+app.get('/api/game-state-models', (req, res) => {
+    res.json(gameStateModels);
+});
 
 app.post('/game/:model', async (req, res) => {
     const { image } = req.body;

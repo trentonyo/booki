@@ -29,7 +29,8 @@
     {
       "name": "game_timeRemaining",
       "rect": {"left": 1227, "top": 64, "width": 105, "height": 120},
-      "charMask": ":+1234567890"
+      "charMask": ":+1234567890",
+      "validRegex": "^\\d?\\d:\\d\\d(\\n\\+\\d?\\d:\\d\\d)?$"
     }
   ]
 }
