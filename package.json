@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && pnpm run build:react",
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
     "build:react": "webpack --config webpack.config.js",
