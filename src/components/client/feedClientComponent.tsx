@@ -23,11 +23,26 @@ const FeedClientComponent: React.FC = () => {
         }
     }, []);
 
+    const [modelName, setModelName] = useState<string | null>(null);
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameString = urlParams.get('game');
+
+        if (gameString) {
+            const decodedString = decodeURIComponent(gameString);
+            try {
+                setModelName(decodedString);
+            } catch (error) {
+                console.error("Failed to parse game", error);
+            }
+        }
+    }, []);
+
     useEffect(() => {
         if (gameStateModel) {
-            const modelName = "thefinals_ranked"
             startCamera(
-                modelName,
+                modelName!,
                 gameStateModel.constraints.width,
                 gameStateModel.constraints.height,
                 gameStateModel.constraints.refreshEvery

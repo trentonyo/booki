@@ -51,5 +51,3 @@ export async function startCamera(modelName: string, width: number, height: numb
 
     captureFrame();
 }
-
-// startCamera(2560, 1440, 1500)
