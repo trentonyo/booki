@@ -54,9 +54,9 @@ app.post('/game/:model', async (req, res) => {
     res.json(result);
 })
 
-app.get('/feed', async (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/pages/feed.html'));
-})
+// app.get('/feed', async (req, res) => {
+//     res.sendFile(path.join(__dirname, '../public/pages/feed.html'));
+// })
 
 // Serve the React app for any unmatched routes
 app.get('*', (req, res) => {
