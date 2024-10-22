@@ -2,13 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { StateModelMap } from "../../server";
-import {StateModel} from "../../ocr";
+import { StateModel } from "../../ocr";
+import { startCamera } from "../../scripts/feed";
 
-interface FeedClientComponentProps {
-    gameStateModel?: StateModelMap;
-}
-
-const FeedClientComponent: React.FC<FeedClientComponentProps> = () => {
+const FeedClientComponent: React.FC = () => {
     const [gameStateModel, setGameStateModel] = useState<StateModel | null>(null);
 
     useEffect(() => {
@@ -26,6 +23,18 @@ const FeedClientComponent: React.FC<FeedClientComponentProps> = () => {
         }
     }, []);
 
+    useEffect(() => {
+        if (gameStateModel) {
+            const modelName = "thefinals_ranked"
+            startCamera(
+                modelName,
+                gameStateModel.constraints.width,
+                gameStateModel.constraints.height,
+                gameStateModel.constraints.refreshEvery
+            );
+        }
+    }, [gameStateModel]);
+
     if (!gameStateModel) {
         console.error("No gameStateModel provided");
         return <>Waiting for valid game state model...</>;
@@ -33,9 +42,6 @@ const FeedClientComponent: React.FC<FeedClientComponentProps> = () => {
 
     return (
         <>
-            {/*<script defer>*/}
-            {/*    feed.startCamera({gameStateModel.constraints.width}, {gameStateModel.constraints.height}, {gameStateModel.constraints.refreshEvery});*/}
-            {/*</script>*/}
             <a href="/"><h1>Home</h1></a>
             <h2>{gameStateModel.constraints.displayName}</h2>
             <video id="video" width="640" height="480"></video>

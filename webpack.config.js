@@ -5,7 +5,7 @@ module.exports = {
   mode: 'development',
   entry: {
     main: './src/index.tsx',
-    camera: './src/scripts/feed.js'
+    camera: './src/scripts/feed.ts'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
