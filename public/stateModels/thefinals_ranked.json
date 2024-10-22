@@ -3,7 +3,8 @@
     "width": 2560,
     "height": 1440,
     "refreshEvery": 1500,
-    "invert": true
+    "invert": true,
+    "displayName": "THE FINALS: Ranked, elimination rounds"
   },
   "gameState": [
     {

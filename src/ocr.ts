@@ -24,6 +24,7 @@ type Constraints = {
     height: number;
     refreshEvery: number;
     invert: boolean;
+    displayName: string;
 };
 
 // Define the StateModel type composing Constraints and an array of LandMark

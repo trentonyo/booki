@@ -13,7 +13,10 @@ export default function HomeClientComponent(gameStateModels: HomeClientComponent
     if (gameStateModels.gameStateModels) {
         const modelMap = gameStateModels.gameStateModels;
         for (const gameStateModel in modelMap) {
-            modelOptions.push(<li>{gameStateModel}</li>)
+            const stateModelString = JSON.stringify(modelMap[gameStateModel]);
+            const encodedStateModelString = encodeURIComponent(stateModelString);
+            
+            modelOptions.push(<li><a href={`/feed?stateModel=${encodedStateModelString}`}>{modelMap[gameStateModel].constraints.displayName}</a></li>)
         }
     }
 
@@ -26,7 +29,6 @@ export default function HomeClientComponent(gameStateModels: HomeClientComponent
     return (
         <div>
             <h1>booki</h1>
-            <a href="feed"><h2>Feed</h2></a>
             {modelList}
         </div>
     )
