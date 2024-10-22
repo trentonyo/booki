@@ -1,17 +1,43 @@
 'use client';
 
-import React from "react";
-import {StateModelMap} from "../../server";
+import React, { useEffect, useState } from "react";
+import { StateModelMap } from "../../server";
+import {StateModel} from "../../ocr";
 
-
-interface HomeClientComponentProps {
-    gameStateModels?: StateModelMap
+interface FeedClientComponentProps {
+    gameStateModel?: StateModelMap;
 }
 
-export default function FeedClientComponent() {
+const FeedClientComponent: React.FC<FeedClientComponentProps> = () => {
+    const [gameStateModel, setGameStateModel] = useState<StateModel | null>(null);
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stateModelString = urlParams.get('stateModel');
+
+        if (stateModelString) {
+            const decodedString = decodeURIComponent(stateModelString);
+            try {
+                const parsedModel = JSON.parse(decodedString);
+                setGameStateModel(parsedModel);
+            } catch (error) {
+                console.error("Failed to parse gameStateModel", error);
+            }
+        }
+    }, []);
+
+    if (!gameStateModel) {
+        console.error("No gameStateModel provided");
+        return <>Waiting for valid game state model...</>;
+    }
 
     return (
-        <><a href="/"><h1>Home</h1></a>
+        <>
+            {/*<script defer>*/}
+            {/*    feed.startCamera({gameStateModel.constraints.width}, {gameStateModel.constraints.height}, {gameStateModel.constraints.refreshEvery});*/}
+            {/*</script>*/}
+            <a href="/"><h1>Home</h1></a>
+            <h2>{gameStateModel.constraints.displayName}</h2>
             <video id="video" width="640" height="480"></video>
             <div>Game time: <span id="game-time"></span></div>
             <table>
@@ -41,5 +67,7 @@ export default function FeedClientComponent() {
                 </tbody>
             </table>
         </>
-)
-}
+    );
+};
+
+export default FeedClientComponent;

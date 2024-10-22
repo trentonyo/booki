@@ -1,13 +1,11 @@
-// src/scripts/camera.js
-
-async function startCamera() {
+export async function startCamera(width, height, requestDelay) {
     const constraints = {
         video: {
-            width: 2560,
-            height: 1440
+            width: width,
+            height: height
         },
         performance: {
-            requestDelay: 1000
+            requestDelay: requestDelay
         }
     };
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
@@ -53,4 +51,4 @@ async function startCamera() {
     captureFrame();
 }
 
-startCamera();
+startCamera(2560, 1440, 1500)

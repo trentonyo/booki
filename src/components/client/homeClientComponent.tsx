@@ -16,7 +16,7 @@ export default function HomeClientComponent(gameStateModels: HomeClientComponent
             const stateModelString = JSON.stringify(modelMap[gameStateModel]);
             const encodedStateModelString = encodeURIComponent(stateModelString);
             
-            modelOptions.push(<li><a href={`/feed?stateModel=${encodedStateModelString}`}>{modelMap[gameStateModel].constraints.displayName}</a></li>)
+            modelOptions.push(<li key={gameStateModel}><a href={`/feed?stateModel=${encodedStateModelString}`}>{modelMap[gameStateModel].constraints.displayName}</a></li>)
         }
     }
 
