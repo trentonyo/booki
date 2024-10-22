@@ -11,6 +11,9 @@ const host = process.env.EXPRESS_DNS || "localhost";
 app.use(express.json({ limit: '50mb' })); // Increase the limit for large image data
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Add this line to serve React's static files
+app.use(express.static(path.join(__dirname, '../dist')));
+
 // Load in all gamestate models and their char masks to the OCR
 const gameStateModels: { [game: string]: StateModel } = {
     "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json")
@@ -48,6 +51,12 @@ app.post('/game/:model', async (req, res) => {
 app.get('/feed', async (req, res) => {
     res.sendFile(path.join(__dirname, '../public/pages/feed.html'));
 })
+
+// Serve the React app for any unmatched routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 
 app.listen(port, () => {
     initGameStateModels(6)
