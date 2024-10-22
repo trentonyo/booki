@@ -1,4 +1,5 @@
 const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   mode: 'development',
@@ -22,11 +23,26 @@ module.exports = {
       }
     ]
   },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './public/index.html',
+      inject: 'body',
+      chunks: ['main'],
+      filename: 'index.html'
+    }),
+    new HtmlWebpackPlugin({
+      template: './public/feed.html',
+      inject: 'body',
+      chunks: ['main', 'camera'],
+      filename: 'feed.html'
+    }),
+  ],
   devServer: {
     static: {
       directory: path.join(__dirname, 'public')
     },
     compress: true,
-    port: 3000
+    port: 3000,
+    historyApiFallback: true
   }
 };

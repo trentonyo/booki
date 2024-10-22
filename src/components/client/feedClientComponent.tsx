@@ -8,7 +8,7 @@ interface HomeClientComponentProps {
     gameStateModels?: StateModelMap
 }
 
-export default function ServerClientComponent() {
+export default function FeedClientComponent() {
 
     return (
         <><a href="/"><h1>Home</h1></a>

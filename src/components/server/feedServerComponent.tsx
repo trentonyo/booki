@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import HomeClientComponent from '../client/homeClientComponent';
 import { StateModelMap } from '../../server';
-import ServerClientComponent from "../client/serverClientComponent";
+import FeedClientComponent from "../client/feedClientComponent";
 
 export default function ServerServerComponent() {
     // const [gameStateModels, setGameStateModels] = useState<StateModelMap | undefined>(undefined);
@@ -12,5 +12,5 @@ export default function ServerServerComponent() {
     //         .then(data => setGameStateModels(data));
     // }, []);
 
-    return <ServerClientComponent />
+    return <FeedClientComponent />
 }
