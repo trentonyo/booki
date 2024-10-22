@@ -55,36 +55,30 @@ const FeedClientComponent: React.FC = () => {
         return <>Waiting for valid game state model...</>;
     }
 
+    let dataFeed: React.JSX.Element[] = [];
+    for (const landMark of gameStateModel.gameState) {
+        dataFeed.push((
+            <tr key={landMark.name}>
+                <td>{landMark.name}</td>
+                <td id={landMark.name}></td>
+            </tr>
+        ))
+    }
+
     return (
         <>
             <a href="/"><h1>Home</h1></a>
             <h2>{gameStateModel.constraints.displayName}</h2>
             <video id="video" width="640" height="480"></video>
-            <div>Game time: <span id="game-time"></span></div>
             <table>
                 <thead>
                 <tr>
-                    <th>Position</th>
-                    <th>Cash</th>
+                    <th>landMark</th>
+                    <th>value</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr>
-                    <td>First</td>
-                    <td id="first-place"></td>
-                </tr>
-                <tr>
-                    <td>Second</td>
-                    <td id="second-place"></td>
-                </tr>
-                <tr>
-                    <td>Third</td>
-                    <td id="third-place"></td>
-                </tr>
-                <tr>
-                    <td>Fourth</td>
-                    <td id="fourth-place"></td>
-                </tr>
+                {dataFeed}
                 </tbody>
             </table>
         </>

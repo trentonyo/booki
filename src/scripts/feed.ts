@@ -36,11 +36,9 @@ export async function startCamera(modelName: string, width: number, height: numb
             })
         }).then(response => response.json())
             .then(data => {
-                (document.getElementById('first-place') as HTMLElement).innerText = data[0].text;
-                (document.getElementById('second-place') as HTMLElement).innerText = data[1].text;
-                (document.getElementById('third-place') as HTMLElement).innerText = data[2].text;
-                (document.getElementById('fourth-place') as HTMLElement).innerText = data[3].text;
-                (document.getElementById('game-time') as HTMLElement).innerText = data[4].text;
+                for (const datum of data) {
+                    document.getElementById(datum.name)!.innerHTML = datum.text;
+                }
             })
             .catch(error => console.error('Error:', error));
 
