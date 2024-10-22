@@ -43,9 +43,7 @@ const FeedClientComponent: React.FC = () => {
         if (gameStateModel) {
             startCamera(
                 modelName!,
-                gameStateModel.constraints.width,
-                gameStateModel.constraints.height,
-                gameStateModel.constraints.refreshEvery
+                gameStateModel
             );
         }
     }, [gameStateModel]);

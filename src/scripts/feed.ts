@@ -1,14 +1,24 @@
-export async function startCamera(modelName: string, width: number, height: number, requestDelay: number): Promise<void> {
+import {StateModel} from "../ocr";
+
+export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
     const constraints = {
         video: {
-            width: width,
-            height: height
+            width: stateModel.constraints.width,
+            height: stateModel.constraints.height
         },
         performance: {
-            requestDelay: requestDelay
+            requestDelay: stateModel.constraints.refreshEvery
         }
     };
 
+    const regexValidators: { [key: string]: RegExp } = {};
+
+    for (const landmark of stateModel.gameState) {
+        if (landmark.validRegex) {
+            regexValidators[landmark.name] = new RegExp(landmark.validRegex);
+        }
+    }
+    
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
     const video = document.getElementById('video') as HTMLVideoElement;
     video.srcObject = stream;
@@ -37,7 +47,20 @@ export async function startCamera(modelName: string, width: number, height: numb
         }).then(response => response.json())
             .then(data => {
                 for (const datum of data) {
-                    document.getElementById(datum.name)!.innerHTML = datum.text;
+                    let potential: string = (datum.text as string).trim()
+                    // If there is a regex validator set up, use it
+                    if (regexValidators[datum.name]) {
+                        const result = regexValidators[datum.name].exec(potential);
+
+                        if (result) {
+                            potential = result[0]
+                        }
+                        else {
+                            potential = document.getElementById(datum.name)!.innerHTML
+                        }
+                    }
+
+                    document.getElementById(datum.name)!.innerHTML = potential;
                 }
             })
             .catch(error => console.error('Error:', error));
