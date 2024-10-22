@@ -1,6 +1,6 @@
 import express from 'express';
 import {PrismaClient} from '@prisma/client';
-import {ocr_test, processGameFrame, StateModel} from "./ocr";
+import {initWorkerPool, processGameFrame, StateModel} from "./ocr";
 import path from 'path';
 
 const prisma = new PrismaClient();
@@ -11,24 +11,23 @@ const host = process.env.EXPRESS_DNS || "localhost";
 app.use(express.json({ limit: '50mb' })); // Increase the limit for large image data
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Load in all gamestate models and their char masks to the OCR
 const gameStateModels: { [game: string]: StateModel } = {
     "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json")
 }
 
-app.post('/run-ocr', async (req, res) => {
-    const texts = await ocr_test([req.body.rectangle]);
+function initGameStateModels(workers: number) {
+    let allCharMasks: any[] = [];
+    for (const gameStateModelsKey in gameStateModels) {
+        const gameStateModel = gameStateModels[gameStateModelsKey];
 
-    if (texts) {
-        await prisma.game.create({
-            data: {createdAt: new Date()}
-        });
-
-        res.json({texts});
-
-    } else {
-        res.status(500).json({error: 'Internal Server Error'});
+        for (const landMark of gameStateModel.gameState) {
+            allCharMasks.push(landMark.charMask);
+        }
     }
-});
+
+    initWorkerPool(allCharMasks, workers);
+}
 
 app.post('/game/:model', async (req, res) => {
     const { image } = req.body;
@@ -51,5 +50,6 @@ app.get('/feed', async (req, res) => {
 })
 
 app.listen(port, () => {
+    initGameStateModels(6)
     console.log(`OCR service listening at http://${host}:${port}`);
 });

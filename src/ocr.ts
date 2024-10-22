@@ -1,6 +1,5 @@
-import {createScheduler, createWorker, Scheduler} from "tesseract.js";
+import { createScheduler, createWorker, Scheduler, Worker } from 'tesseract.js';
 import sharp from "sharp";
-import * as fs from "node:fs";
 
 // Define the Rectangle type
 type Rectangle = {
@@ -32,89 +31,90 @@ export type StateModel = {
     gameState: LandMark[];
 };
 
+// Define the WorkerPool class for handling OCR jobs
+class WorkerPool {
+    private schedulers: { [charMask: string]: Scheduler } = {};
+    private workers: { [charMask: string]: Worker[] } = {};
+
+    constructor(charMasks: string[], numberOfWorkersPerMask: number) {
+        const uniqueCharMasks = Array.from(new Set(charMasks));
+        this.initWorkers(uniqueCharMasks, numberOfWorkersPerMask).then(() => {
+            console.log("Worker pools initialized for charMasks:", uniqueCharMasks);
+        });
+    }
+
+    private async initWorkers(charMasks: string[], numberOfWorkersPerMask: number) {
+        for (const charMask of charMasks) {
+            const scheduler = createScheduler();
+            this.schedulers[charMask] = scheduler;
+            this.workers[charMask] = [];
+
+            for (let i = 0; i < numberOfWorkersPerMask; i++) {
+                const worker = await createWorker("eng", 1);
+                await worker.setParameters({ tessedit_char_whitelist: charMask });
+                scheduler.addWorker(worker);
+                this.workers[charMask].push(worker);
+            }
+        }
+    }
+
+    public addJob(charMask: string, imageBuffer: Buffer, options: any) {
+        const output = {
+            text: true,
+            blocks: false,
+            layoutBlocks: false,
+            hocr: false,
+            tsv: false,
+            box: false,
+            unlv: false,
+            osd: false,
+            pdf: false,
+            imageColor: false,
+            imageGrey: false,
+            imageBinary: false,
+            debug: false
+        }
+
+        const scheduler = this.schedulers[charMask];
+        if (!scheduler) {
+            throw new Error(`No scheduler available for charMask: ${charMask}`);
+        }
+        return scheduler.addJob("recognize", imageBuffer, options, output);
+    }
+
+    public async terminate() {
+        for (const charMask in this.schedulers) {
+            await this.schedulers[charMask].terminate();
+        }
+    }
+}
+
+let workerPool: WorkerPool;
+export function getWorkerPool() {
+    return workerPool;
+}
+
+export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: number) {
+    workerPool = new WorkerPool(charMasks, numberOfWorkersPerMask); // Adjust the number of workers per char mask as needed
+}
+
 export async function processGameFrame(dataURL: string, stateModel: StateModel) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const imageBuffer = await sharp(rawImageBuffer)
-        .negate(stateModel.constraints.invert ? {alpha: false} : false)
+        .negate(stateModel.constraints.invert ? { alpha: false } : false)
         .toBuffer();
 
-    const output = {
-        text: true,
-        blocks: false,
-        layoutBlocks: false,
-        hocr: false,
-        tsv: false,
-        box: false,
-        unlv: false,
-        osd: false,
-        pdf: false,
-        imageColor: false,
-        imageGrey: false,
-        imageBinary: false,
-        debug: false
-    }
-
-    // Sort landMarks into batches of common charMasks
-    const batches: { [charMask: string]: LandMark[] } = {};
-
-    stateModel.gameState.forEach(landMark => {
-        const charMask = landMark.charMask || "<NONE>";
-        if (!batches[charMask]) {
-            batches[charMask] = [];
-        }
-        batches[charMask].push(landMark);
-    });
-
-    // Define scheduler and workers for each different charMask (batch)
-    const schedulers: { [charMask: string]: Scheduler } = {};
-    for (const charMask in batches) {
-        schedulers[charMask] = createScheduler();
-
-        for (const _ of batches[charMask]) {
-            const newWorker = await createWorker("eng", 1);
-            await newWorker.setParameters({tessedit_char_whitelist: charMask});
-            schedulers[charMask].addWorker(newWorker);
-        }
-    }
-
-    // For each LandMark, recognize from the image
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
+        const charMask = landMark.charMask || "<NONE>";
+
         const options = landMark.radians ? {
             "rectangle": landMark.rect,
             "rotateRadians": landMark.radians
-        } : {"rectangle": landMark.rect, "rotateAuto": true}
+        } : { "rectangle": landMark.rect, "rotateAuto": true }
 
-        const result = await schedulers[landMark.charMask || "<NONE>"].addJob("recognize", imageBuffer, options, output);
-        return {name: landMark.name, text: result.data.text};
+        const result = await workerPool.addJob(charMask, imageBuffer, options);
+        return { name: landMark.name, text: result.data.text };
     });
 
-    const result = await Promise.all(recognizePromises);
-
-    for (let key in schedulers) {
-        await schedulers[key].terminate();
-    }
-
-    return result;
-}
-
-export async function ocr_test(rectangles: Rectangle[]) {
-    try {
-        const scheduler = createScheduler();
-        const worker1 = await createWorker("eng", 1);
-        const worker2 = await createWorker("eng", 1);
-
-        scheduler.addWorker(worker1);
-        scheduler.addWorker(worker2);
-
-        const response = await Promise.all(rectangles.map((rectangle: Rectangle) => (
-            scheduler.addJob('recognize', 'https://tesseract.projectnaptha.com/img/eng_bw.png', {rectangle})
-        )));
-
-        await scheduler.terminate();
-        return response;
-
-    } catch (error) {
-        console.error("Error running OCR:", error);
-        return null;
-    }
+    return await Promise.all(recognizePromises);
 }
