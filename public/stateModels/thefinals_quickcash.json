@@ -15,20 +15,20 @@
     {
       "name": "score_firstCash",
       "rect": {"left": 170, "top": 82, "width": 240, "height": 55},
-      "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
+      "charMask": "$+120",
+      "validRegex": "^\\$(0|10000|20000)(\\+\\$10000)?$"
     },
     {
       "name": "score_secondCash",
       "rect": {"left": 170, "top": 137, "width": 240, "height": 55},
-      "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
+      "charMask": "$+120",
+      "validRegex": "^\\$(0|10000|20000)(\\+\\$10000)?$"
     },
     {
       "name": "score_thirdCash",
       "rect": {"left": 170, "top": 190, "width": 240, "height": 55},
-      "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
+      "charMask": "$+120",
+      "validRegex": "^\\$(0|10000|20000)(\\+\\$10000)?$"
     },
     {
       "name": "game_timeRemaining",
