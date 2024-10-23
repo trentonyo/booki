@@ -15,7 +15,7 @@
     },
     {
       "name": "score_secondCash",
-      "rect": {"left": 170, "top": 143, "width": 240, "height": 55},
+      "rect": {"left": 170, "top": 137, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },
@@ -27,7 +27,7 @@
     },
     {
       "name": "score_fourthCash",
-      "rect": {"left": 170, "top": 293, "width": 240, "height": 55},
+      "rect": {"left": 170, "top": 291, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },

@@ -122,6 +122,7 @@ dist
 # IDE
 .vscode-test
 .idea
+.debug
 
 # yarn v2
 .yarn/cache

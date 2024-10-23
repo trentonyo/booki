@@ -12,13 +12,28 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     };
 
     const regexValidators: { [key: string]: RegExp } = {};
+    let minX = stateModel.constraints.width;
+    let minY = stateModel.constraints.height;
+    let maxX = 0;
+    let maxY = 0;
 
     for (const landmark of stateModel.gameState) {
+        // Calculate minimum bounding box
+        minX = Math.min(minX, landmark.rect.left)
+        minY = Math.min(minY, landmark.rect.top)
+
+        maxX = Math.max(maxX, landmark.rect.left + landmark.rect.width)
+        maxY = Math.max(maxY, landmark.rect.top + landmark.rect.height)
+
+        // Collect valid regex
         if (landmark.validRegex) {
             regexValidators[landmark.name] = new RegExp(landmark.validRegex);
         }
     }
-    
+    // Normalize maxX/maxY
+    maxX -= minX;
+    maxY -= minY;
+
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
     const video = document.getElementById('video') as HTMLVideoElement;
     video.srcObject = stream;
@@ -28,12 +43,12 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
 
     // Capture frames from the video stream and send to the server
     const canvas = document.createElement('canvas');
-    canvas.width = constraints.video.width as number;
-    canvas.height = constraints.video.height as number;
+    canvas.width = maxX;
+    canvas.height = maxY;
     const ctx = canvas.getContext('2d');
 
     function captureFrame() {
-        ctx!.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
         const dataURL = canvas.toDataURL('image/png');
 
         fetch(`http://localhost:3000/game/${modelName}`, {
@@ -42,7 +57,9 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                image: dataURL
+                image: dataURL,
+                minX: minX,
+                minY: minY
             })
         }).then(response => response.json())
             .then(data => {

@@ -37,7 +37,7 @@ app.get('/api/game-state-models', (req, res) => {
 });
 
 app.post('/game/:model', async (req, res) => {
-    const { image } = req.body;
+    const { image, minX, minY } = req.body;
     const { model } = req.params;
 
     if (!gameStateModels.hasOwnProperty(model)) {
@@ -47,7 +47,7 @@ app.post('/game/:model', async (req, res) => {
 
     const modelParsed = gameStateModels[model];
 
-    const result = await processGameFrame(image, modelParsed);
+    const result = await processGameFrame(image, modelParsed, minX, minY);
 
     res.json(result);
 });

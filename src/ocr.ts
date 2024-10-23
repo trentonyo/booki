@@ -1,5 +1,6 @@
 import { createScheduler, createWorker, Scheduler, Worker } from 'tesseract.js';
 import sharp from "sharp";
+import {writeFileSync} from 'fs';
 
 // Define the Rectangle type
 type Rectangle = {
@@ -100,22 +101,48 @@ export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: numb
     workerPool = new WorkerPool(charMasks, numberOfWorkersPerMask); // Adjust the number of workers per char mask as needed
 }
 
-export async function processGameFrame(dataURL: string, stateModel: StateModel) {
+export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const imageBuffer = await sharp(rawImageBuffer)
         .negate(stateModel.constraints.invert ? { alpha: false } : false)
         .toBuffer();
 
+    // Save the image buffer to disk TODO Debug
+    const encodedName = stateModel.constraints.displayName
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z]+/g, '');
+    writeFileSync(`.debug/${encodedName}.png`, imageBuffer, {flag: 'w'});
+
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
         const charMask = landMark.charMask || "<NONE>";
 
-        const options = landMark.radians ? {
-            "rectangle": landMark.rect,
-            "rotateRadians": landMark.radians
-        } : { "rectangle": landMark.rect, "rotateAuto": true }
+        // Normalize rects minX/minY (for if frame has been cropped)
+        let normalizedRect = {...landMark.rect}; // Make a copy of the rect object
+        normalizedRect.left -= minX;
+        normalizedRect.top -= minY;
 
-        const result = await workerPool.addJob(charMask, imageBuffer, options);
-        return { name: landMark.name, text: result.data.text };
+        // If there is a rotation, apply it
+        let options;
+        if (landMark.radians) {
+            options = {
+                "rectangle": normalizedRect,
+                "rotateRadians": landMark.radians
+            };
+        } else {
+            options = {
+                "rectangle": normalizedRect,
+                "rotateAuto": true
+            };
+        }
+
+        try {
+            const result = await workerPool.addJob(charMask, imageBuffer, options);
+            return {name: landMark.name, text: result.data.text};
+        } catch (error) {
+            console.error(`Error processing ${landMark.name}:`, error);
+            return {};
+        }
     });
 
     return await Promise.all(recognizePromises);
