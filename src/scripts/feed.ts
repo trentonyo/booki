@@ -1,4 +1,5 @@
 import {StateModel} from "../ocr";
+import {Rectangle} from "tesseract.js";
 
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
     const constraints = {
@@ -16,6 +17,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     let minY = stateModel.constraints.height;
     let maxX = 0;
     let maxY = 0;
+    let debugRects: Rectangle[] = [];
 
     for (const landmark of stateModel.gameState) {
         // Calculate minimum bounding box
@@ -29,6 +31,9 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         if (landmark.validRegex) {
             regexValidators[landmark.name] = new RegExp(landmark.validRegex);
         }
+
+        // Collect rects
+        debugRects.push(landmark.rect)
     }
     // Normalize maxX/maxY
     maxX -= minX;
@@ -49,6 +54,15 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
 
     function captureFrame() {
         ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
+
+        // Draw bounding boxes for each landmark TODO Debug
+        /*
+        ctx!.strokeStyle = "#ff0059"
+        for (const debugRect of debugRects) {
+            ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);
+        }
+        // */
+
         const dataURL = canvas.toDataURL('image/png');
 
         fetch(`http://localhost:3000/game/${modelName}`, {

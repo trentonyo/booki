@@ -109,8 +109,7 @@ export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: numb
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const imageBuffer = await sharp(rawImageBuffer)
-        // .tint(stateModel.constraints.tint as Color)
-        .tint({r: 255, g: 240, b: 220})
+        .tint(stateModel.constraints.tint as Color)
         .negate(stateModel.constraints.invert ? { alpha: false } : false)
         .toBuffer();
 
@@ -121,7 +120,7 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         .replace(/\s+/g, '_')
         .replace(/[^a-z]+/g, '');
     writeFileSync(`.debug/${encodedName}.png`, imageBuffer, {flag: 'w'});
-     */
+    // */
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
         const charMask = landMark.charMask || "<NONE>";
