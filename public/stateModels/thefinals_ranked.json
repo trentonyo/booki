@@ -1,10 +1,15 @@
 {
   "constraints": {
+    "displayName": "THE FINALS: Ranked (elimination rounds)",
     "width": 2560,
     "height": 1440,
-    "refreshEvery": 1500,
+    "refreshEvery": 500,
     "invert": true,
-    "displayName": "THE FINALS: Ranked (elimination rounds)"
+    "tint": {
+      "r": 255,
+      "g": 240,
+      "b": 220
+    }
   },
   "gameState": [
     {

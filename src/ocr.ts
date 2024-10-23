@@ -1,5 +1,5 @@
 import { createScheduler, createWorker, Scheduler, Worker } from 'tesseract.js';
-import sharp from "sharp";
+import sharp, {Color} from "sharp";
 import {writeFileSync} from 'fs';
 
 // Define the Rectangle type
@@ -21,11 +21,16 @@ type LandMark = {
 
 // Define the Constraints type
 type Constraints = {
+    displayName: string;
     width: number;
     height: number;
     refreshEvery: number;
     invert: boolean;
-    displayName: string;
+    tint: {
+        r: number
+        g: number
+        b: number
+    };
 };
 
 // Define the StateModel type composing Constraints and an array of LandMark
@@ -104,15 +109,19 @@ export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: numb
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const imageBuffer = await sharp(rawImageBuffer)
+        // .tint(stateModel.constraints.tint as Color)
+        .tint({r: 255, g: 240, b: 220})
         .negate(stateModel.constraints.invert ? { alpha: false } : false)
         .toBuffer();
 
     // Save the image buffer to disk TODO Debug
+    /*
     const encodedName = stateModel.constraints.displayName
         .toLowerCase()
         .replace(/\s+/g, '_')
         .replace(/[^a-z]+/g, '');
     writeFileSync(`.debug/${encodedName}.png`, imageBuffer, {flag: 'w'});
+     */
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
         const charMask = landMark.charMask || "<NONE>";
