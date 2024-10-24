@@ -1,4 +1,4 @@
-import {StateModel} from "../ocr";
+import {StateModel, LandMark} from "../ocr";
 import {Rectangle} from "tesseract.js";
 
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
@@ -76,23 +76,40 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                 minY: minY
             })
         }).then(response => response.json())
-            .then(data => {
-                for (const datum of data) {
-                    let potential: string = (datum.text as string).trim()
+            .then(result => {
+                const processedStateModel = result as StateModel;
+
+                /**
+                 * Validate the processed stateModel that the API responds with.
+                 */
+                if (!processedStateModel) {
+                    console.error("Failed to process state model from response.", result);
+                    return;
+                }
+
+                for (const datum of processedStateModel.gameState) {
+                    let potential: string | undefined = (datum.VALUE as string).trim()
                     // If there is a regex validator set up, use it
                     if (regexValidators[datum.name]) {
                         const result = regexValidators[datum.name].exec(potential);
 
                         if (result) {
-                            potential = result[0]
-                        }
-                        else {
-                            potential = document.getElementById(datum.name)!.innerHTML
+                            potential = result[0];
+                        } else {
+                            potential = undefined;
                         }
                     }
 
-                    document.getElementById(datum.name)!.innerHTML = potential;
+                    datum.VALUE = potential;
                 }
+
+                /// TODO From here on, the processed Game State should be used with a specialized per-game script
+                for (const landMark of processedStateModel.gameState) {
+                    document.getElementById(landMark.name)!.innerHTML = landMark.VALUE || document.getElementById(landMark.name)!.innerHTML;
+                }
+
+                // find the stateModel.ts script associated with this state from /public/stateModels
+                // and call `handleProcessedGameState(processedStateModel)` from it
             })
             .catch(error => console.error('Error:', error));
 
