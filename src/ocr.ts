@@ -11,12 +11,13 @@ type Rectangle = {
 };
 
 // Define the LandMark type
-type LandMark = {
+export type LandMark = {
     name: string;
     rect: Rectangle;
     radians?: number; // rotation is optional
     charMask?: string; // charMask is optional
     validRegex?: string; // validRegex is optional
+    VALUE?: string; // VALUE should only be present when a gameState is returned from OCR  
 };
 
 // Define the Constraints type
@@ -121,6 +122,9 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         .replace(/[^a-z]+/g, '');
     writeFileSync(`.debug/${encodedName}.png`, imageBuffer, {flag: 'w'});
     // */
+    
+    // The output is a stateModel that potentially has VALUE defined for any number of landmarks
+    let output = {...stateModel};
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
         const charMask = landMark.charMask || "<NONE>";
@@ -153,5 +157,16 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         }
     });
 
-    return await Promise.all(recognizePromises);
+    const landMarkNameTextPairs = await Promise.all(recognizePromises);
+    
+    for (const landMarkNameTextPair of landMarkNameTextPairs) {
+        if (landMarkNameTextPair.name && landMarkNameTextPair.text) {
+            const matchingLandMark = output.gameState.find(landMark => landMark.name === landMarkNameTextPair.name);
+            if (matchingLandMark) {
+                matchingLandMark.VALUE = landMarkNameTextPair.text;
+            }
+        }
+    }
+
+    return output;
 }
