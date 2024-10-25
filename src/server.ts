@@ -17,7 +17,8 @@ export type StateModelMap = { [game: string]: StateModel };
 // Load in all gamestate models and their char masks to the OCR
 export const gameStateModels: StateModelMap = {
     "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json") as StateModel,
-    "thefinals_quickcash": require("../public/stateModels/thefinals_quickcash.json") as StateModel
+    "thefinals_quickcash": require("../public/stateModels/thefinals_quickcash.json") as StateModel,
+    "test": require("../public/stateModels/test.json") as StateModel
 }
 
 function initGameStateModels(workers: number) {

@@ -27,7 +27,7 @@ type Constraints = {
     height: number;
     refreshEvery: number;
     invert: boolean;
-    tint: {
+    tint?: {
         r: number
         g: number
         b: number
@@ -53,7 +53,11 @@ class WorkerPool {
     }
 
     private async initWorkers(charMasks: string[], numberOfWorkersPerMask: number) {
-        for (const charMask of charMasks) {
+        for (let charMask of charMasks) {
+            if (charMask === undefined) {
+                charMask = ""
+            }
+
             const scheduler = createScheduler();
             this.schedulers[charMask] = scheduler;
             this.workers[charMask] = [];
@@ -109,13 +113,16 @@ export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: numb
 
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
-    const imageBuffer = await sharp(rawImageBuffer)
-        .tint(stateModel.constraints.tint as Color)
-        .negate(stateModel.constraints.invert ? { alpha: false } : false)
-        .toBuffer();
+    const sharpProc = sharp(rawImageBuffer)
+        .negate(stateModel.constraints.invert ? {alpha: false} : false);
+
+    if (stateModel.constraints.tint) {
+        sharpProc.tint(stateModel.constraints.tint as Color)
+    }
+    const imageBuffer = await sharpProc.toBuffer();
 
     // Save the image buffer to disk TODO Debug
-    /*
+    // /*
     const encodedName = stateModel.constraints.displayName
         .toLowerCase()
         .replace(/\s+/g, '_')
@@ -127,7 +134,7 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     let output = {...stateModel};
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
-        const charMask = landMark.charMask || "<NONE>";
+        const charMask = landMark.charMask || "";
 
         // Normalize rects minX/minY (for if frame has been cropped)
         let normalizedRect = {...landMark.rect}; // Make a copy of the rect object
