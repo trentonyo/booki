@@ -105,14 +105,14 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                 }
 
                 // Load and execute the specialized per-game script
-                // try {
-                //     const gameStateHandler = gameStateModels[modelName].handleProcessedGameState!
-                //     gameStateHandler(processedStateModel)
-                // } catch (error) {
-                //     console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
-                //     const defaultModule = await import('./stateHandlers/default');
-                //     defaultModule.default(processedStateModel);
-                // }
+                try {
+                    const stateHandler = await import(`./stateHandlers/${modelName}`);
+                    stateHandler.default(processedStateModel);
+                } catch (error) {
+                    console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
+                    const defaultHandler = await import('./stateHandlers/default');
+                    defaultHandler.default(processedStateModel);
+                }
             })
             .catch(error => console.error('Error:', error));
 

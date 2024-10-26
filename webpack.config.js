@@ -1,11 +1,18 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const glob = require('glob');
+
+const stateHandlerEntries = glob.sync('./src/scripts/stateHandlers/*.ts').reduce((entries, entry) => {
+  entries.push(`./${entry}`);
+  return entries;
+}, []);
 
 module.exports = {
   mode: 'development',
   entry: {
     main: './src/index.tsx',
-    camera: './src/scripts/feed.ts'
+    camera: './src/scripts/feed.ts',
+    stateHandlers: stateHandlerEntries.length > 0 ? stateHandlerEntries : './src/scripts/stateHandlers/default.ts'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -33,7 +40,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/feed.html',
       inject: 'body',
-      chunks: ['main', 'camera'],
+      chunks: ['main', 'camera', 'stateHandlers'],
       filename: 'feed.html'
     }),
   ],
