@@ -1,0 +1,28 @@
+{
+  "constraints": {
+    "displayName": "TEST: 200x100 square",
+    "width": 2560,
+    "height": 1440,
+    "refreshEvery": 333,
+    "invert": true,
+    "tint": {
+      "r": 255,
+      "g": 240,
+      "b": 220
+    }
+  },
+  "gameState": [
+    {
+      "name": "defining_radians_does_not_help_much",
+      "rect": {"left": 500, "top": 400, "width": 200, "height": 100, "radians": 0.1769764},
+      "charMask": "$+1234567890",
+      "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
+    },
+    {
+      "name": "autoRotateTest",
+      "rect": {"left": 500, "top": 500, "width": 200, "height": 100},
+      "charMask": "$+1234567890",
+      "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
+    }
+  ]
+}
