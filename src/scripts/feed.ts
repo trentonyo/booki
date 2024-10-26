@@ -1,6 +1,11 @@
 import {StateModel, LandMark} from "../ocr";
 import {Rectangle} from "tesseract.js";
-// import {gameStateModels} from "../server";
+
+//  IMPORTANT! See /server.ts for stateModels
+const handlers: { [modelName: string]: (processedGameState: StateModel) => void } = {
+    "default": require("./stateHandlers/default").default,
+    "thefinals_ranked": require("./stateHandlers/thefinals_ranked").default,
+}
 
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
     const constraints = {
@@ -57,7 +62,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
 
         // Draw bounding boxes for each landmark TODO Debug
-        // /*
+        /*
         ctx!.strokeStyle = "#ff0059"
         for (const debugRect of debugRects) {
             ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);
@@ -106,12 +111,10 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
 
                 // Load and execute the specialized per-game script
                 try {
-                    const stateHandler = await import(`./stateHandlers/${modelName}`);
-                    stateHandler.default(processedStateModel);
+                    handlers[modelName](processedStateModel);
                 } catch (error) {
                     console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
-                    const defaultHandler = await import('./stateHandlers/default');
-                    defaultHandler.default(processedStateModel);
+                    handlers["default"](processedStateModel);
                 }
             })
             .catch(error => console.error('Error:', error));

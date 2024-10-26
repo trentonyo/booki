@@ -15,11 +15,9 @@ app.use(express.static(path.join(__dirname, '../dist')));
 export type StateModelMap = { [game: string]: StateModel };
 
 // Load in all gamestate models and their char masks to the OCR
+//  IMPORTANT! See /scripts/feed.ts for specialty scripts
 export const gameStateModels: StateModelMap = {
-    "thefinals_ranked": {
-        ...require("../public/stateModels/thefinals_ranked.json") as StateModel,
-        handleProcessedGameState: require("./scripts/stateHandlers/thefinals_ranked").handleProcessedGameState,
-    },
+    "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json") as StateModel,
     "thefinals_quickcash": require("../public/stateModels/thefinals_quickcash.json") as StateModel,
     "test": require("../public/stateModels/test.json") as StateModel
 }

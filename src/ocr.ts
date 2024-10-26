@@ -38,7 +38,6 @@ type Constraints = {
 export type StateModel = {
     constraints: Constraints;
     gameState: LandMark[];
-    handleProcessedGameState?: (processedGameState: StateModel) => void;
 };
 
 // Define the WorkerPool class for handling OCR jobs
