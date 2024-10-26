@@ -1,4 +1,4 @@
-import {StateModel} from "../../src/ocr";
+import {StateModel} from "../../ocr";
 
 export default function handleProcessedGameState(processedGameState: StateModel) {
     console.log("Hey, they're watching The Finals!")

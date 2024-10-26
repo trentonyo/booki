@@ -1,6 +1,6 @@
 import {StateModel, LandMark} from "../ocr";
 import {Rectangle} from "tesseract.js";
-import handleProcessedGameState from "../../public/stateHandlers/stateModelHandler_thefinals_ranked";
+// import {gameStateModels} from "../server";
 
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
     const constraints = {
@@ -104,24 +104,15 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                     datum.VALUE = potential;
                 }
 
-                // /// TODO From here on, the processed Game State should be used with a specialized per-game script
-                // for (const landMark of processedStateModel.gameState) {
-                //     document.getElementById(landMark.name)!.innerHTML = landMark.VALUE || document.getElementById(landMark.name)!.innerHTML;
-                // }
-
                 // Load and execute the specialized per-game script
-                try {
-                    const scriptModule = await import(`./stateModelHandler_${modelName}`);
-                    if (scriptModule && typeof scriptModule.handleProcessedGameState === 'function') {
-                        scriptModule.handleProcessedGameState(processedStateModel);
-                    } else {
-                        throw new Error(`Specialized script for ${modelName} does not have a handleGameState function.`);
-                    }
-                } catch (error) {
-                    console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
-                    const defaultModule = await import('../../public/stateHandlers/stateHandler_default');
-                    defaultModule.default(processedStateModel);
-                }
+                // try {
+                //     const gameStateHandler = gameStateModels[modelName].handleProcessedGameState!
+                //     gameStateHandler(processedStateModel)
+                // } catch (error) {
+                //     console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
+                //     const defaultModule = await import('./stateHandlers/default');
+                //     defaultModule.default(processedStateModel);
+                // }
             })
             .catch(error => console.error('Error:', error));
 

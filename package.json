@@ -12,12 +12,17 @@
   },
   "dependencies": {
     "@prisma/client": "^5.21.1",
+    "browserify-zlib": "^0.2.0",
+    "crypto-browserify": "^3.12.1",
     "express": "^4.18.1",
+    "path-browserify": "^1.0.1",
     "prisma": "^5.21.1",
+    "querystring-es3": "^0.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
     "sharp": "^0.33.5",
+    "stream-browserify": "^3.0.0",
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {

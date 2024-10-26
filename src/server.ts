@@ -18,7 +18,7 @@ export type StateModelMap = { [game: string]: StateModel };
 export const gameStateModels: StateModelMap = {
     "thefinals_ranked": {
         ...require("../public/stateModels/thefinals_ranked.json") as StateModel,
-        handleProcessedGameState: require("../public/stateHandlers/thefinals_ranked").handleProcessedGameState,
+        handleProcessedGameState: require("./scripts/stateHandlers/thefinals_ranked").handleProcessedGameState,
     },
     "thefinals_quickcash": require("../public/stateModels/thefinals_quickcash.json") as StateModel,
     "test": require("../public/stateModels/test.json") as StateModel
