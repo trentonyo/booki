@@ -1,6 +1,6 @@
 import {StateModel, LandMark} from "../ocr";
 import {Rectangle} from "tesseract.js";
-import handleProcessedGameState from "./stateModelHandler_thefinals_ranked";
+import handleProcessedGameState from "../../public/stateHandlers/stateModelHandler_thefinals_ranked";
 
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
     const constraints = {
@@ -119,7 +119,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                     }
                 } catch (error) {
                     console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
-                    const defaultModule = await import('./stateModelHandler_default');
+                    const defaultModule = await import('../../public/stateHandlers/stateHandler_default');
                     defaultModule.default(processedStateModel);
                 }
             })

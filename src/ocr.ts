@@ -34,10 +34,11 @@ type Constraints = {
     };
 };
 
-// Define the StateModel type composing Constraints and an array of LandMark
+// Define the StateModel type composing Constraints, an array of LandMark, and an optional game logic function
 export type StateModel = {
     constraints: Constraints;
     gameState: LandMark[];
+    handleProcessedGameState?: (processedGameState: StateModel) => void;
 };
 
 // Define the WorkerPool class for handling OCR jobs

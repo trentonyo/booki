@@ -1,4 +1,4 @@
-import {StateModel} from "../ocr";
+import {StateModel} from "../../src/ocr";
 
 export default function handleProcessedGameState(processedGameState: StateModel) {
     console.log("DEFAULT")
