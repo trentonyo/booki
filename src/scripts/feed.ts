@@ -1,4 +1,4 @@
-import {StateModel, LandMark} from "../ocr";
+import {StateModel, LandMarkOCR} from "../ocr";
 import {Rectangle} from "tesseract.js";
 
 //  IMPORTANT! See /server.ts for stateModels
@@ -33,10 +33,18 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         maxX = Math.max(maxX, landmark.rect.left + landmark.rect.width)
         maxY = Math.max(maxY, landmark.rect.top + landmark.rect.height)
 
+        // TODO debug
+        // console.warn(landmark.name)
+
         // Collect valid regex
-        if (landmark.validRegex) {
-            regexValidators[landmark.name] = new RegExp(landmark.validRegex);
-        }
+        try {
+            const landMarkOCR = landmark as LandMarkOCR;
+
+            if (landMarkOCR.validRegex) {
+                regexValidators[landMarkOCR.name] = new RegExp(landMarkOCR.validRegex);
+            }
+        } catch { }
+
 
         // Collect rects
         debugRects.push(landmark.rect)
@@ -44,6 +52,9 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     // Normalize maxX/maxY
     maxX -= minX;
     maxY -= minY;
+
+    // TODO debug
+    // console.log(`minX: ${minX} minY: ${minY} maxX: ${maxX} maxY: ${maxY}`);
 
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
     const video = document.getElementById('video') as HTMLVideoElement;
@@ -62,7 +73,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
 
         // Draw bounding boxes for each landmark TODO Debug
-        /*
+        // /*
         ctx!.strokeStyle = "#ff0059"
         for (const debugRect of debugRects) {
             ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);

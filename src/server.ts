@@ -1,7 +1,7 @@
 // server.ts
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { initWorkerPool, processGameFrame, StateModel } from "./ocr";
+import {initWorkerPool, LandMarkOCR, processGameFrame, StateModel} from "./ocr";
 import path from 'path';
 
 const prisma = new PrismaClient();
@@ -28,7 +28,10 @@ function initGameStateModels(workers: number) {
         const gameStateModel = gameStateModels[gameStateModelsKey];
 
         for (const landMark of gameStateModel.gameState) {
-            allCharMasks.push(landMark.charMask);
+            try {
+                const landMarkOCR = landMark as LandMarkOCR;
+                allCharMasks.push(landMarkOCR.charMask);
+            } catch { }
         }
     }
 

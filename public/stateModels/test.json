@@ -13,12 +13,14 @@
   },
   "gameState": [
     {
+      "type":  "ocr",
       "name": "defining_radians_does_not_help_much",
       "rect": {"left": 500, "top": 400, "width": 200, "height": 100, "radians": 0.1769764},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },
     {
+      "type":  "ocr",
       "name": "autoRotateTest",
       "rect": {"left": 500, "top": 500, "width": 200, "height": 100},
       "charMask": "$+1234567890",

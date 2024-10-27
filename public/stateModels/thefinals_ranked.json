@@ -13,34 +13,59 @@
   },
   "gameState": [
     {
+      "type": "ocr",
       "name": "score_firstCash",
       "rect": {"left": 170, "top": 82, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },
     {
+      "type":  "ocr",
       "name": "score_secondCash",
       "rect": {"left": 170, "top": 137, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },
     {
+      "type":  "ocr",
       "name": "score_thirdCash",
       "rect": {"left": 170, "top": 238, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },
     {
+      "type":  "ocr",
       "name": "score_fourthCash",
       "rect": {"left": 170, "top": 291, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
     },
     {
+      "type":  "ocr",
       "name": "game_timeRemaining",
       "rect": {"left": 1227, "top": 64, "width": 105, "height": 120},
       "charMask": ":+1234567890",
       "validRegex": "^\\d?\\d:\\d\\d(\\n\\+\\d?\\d:[0-5]\\d)?$"
+    },
+    {
+      "type": "color",
+      "name": "color_first",
+      "rect": {"left": 120, "top": 84, "width": 10, "height": 10}
+    },
+    {
+      "type": "color",
+      "name": "color_second",
+      "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
+    },
+    {
+      "type": "color",
+      "name": "color_third",
+      "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
+    },
+    {
+      "type": "color",
+      "name": "color_fourth",
+      "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
     }
   ]
 }

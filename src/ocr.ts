@@ -1,5 +1,5 @@
 import { createScheduler, createWorker, Scheduler, Worker } from 'tesseract.js';
-import sharp, {Color} from "sharp";
+import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
 
 // Define the Rectangle type
@@ -10,14 +10,24 @@ type Rectangle = {
     height: number;
 };
 
-// Define the LandMark type
-export type LandMark = {
+// Define the LandMarkOCR type
+export type LandMarkOCR = {
+    type: "ocr";
     name: string;
     rect: Rectangle;
     radians?: number; // rotation is optional
     charMask?: string; // charMask is optional
     validRegex?: string; // validRegex is optional
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR  
+};
+
+
+// Define the LandMarkColor type
+export type LandMarkColor = {
+    type: "color";
+    name: string;
+    rect: Rectangle;
+    VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
 
 // Define the Constraints type
@@ -37,7 +47,7 @@ type Constraints = {
 // Define the StateModel type composing Constraints, an array of LandMark, and an optional game logic function
 export type StateModel = {
     constraints: Constraints;
-    gameState: LandMark[];
+    gameState: (LandMarkOCR | LandMarkColor)[];
 };
 
 // Define the WorkerPool class for handling OCR jobs
@@ -111,6 +121,55 @@ export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: numb
     workerPool = new WorkerPool(charMasks, numberOfWorkersPerMask); // Adjust the number of workers per char mask as needed
 }
 
+async function recognizeOCR(landMark: LandMarkOCR, imageBuffer: Buffer, minX: number, minY: number) {
+    const charMask = landMark.charMask || "";
+
+    // Normalize rects minX/minY (for if frame has been cropped)
+    let normalizedRect = {...landMark.rect}; // Make a copy of the rect object
+    normalizedRect.left -= minX;
+    normalizedRect.top -= minY;
+
+    // If there is a rotation, apply it
+    let options;
+    if (landMark.radians) {
+        options = {
+            "rectangle": normalizedRect,
+            "rotateRadians": landMark.radians
+        };
+    } else {
+        options = {
+            "rectangle": normalizedRect,
+            "rotateAuto": true
+        };
+    }
+
+    try {
+        const result = await workerPool.addJob(charMask, imageBuffer, options);
+        return {name: landMark.name, text: result.data.text};
+    } catch (error) {
+        console.error(`Error processing ${landMark.name}:`, error);
+        return {};
+    }
+}
+
+async function recognizeColor(landMark: LandMarkColor, imageBuffer: Buffer, minX: number, minY: number) {
+    // Normalize rects minX/minY (for if frame has been cropped)
+    let region: Region = {...landMark.rect}; // Make a copy of the rect object
+    region.left -= minX;
+    region.top -= minY;
+
+    const extractedRegion = await sharp(imageBuffer)
+        .extract(region)
+        .resize({ width: 1, height: 1 }) // Resize to 1x1 to get average color
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+    const [r, g, b] = extractedRegion.data;
+
+    const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+
+    return {name: landMark.name, text: hexColor};
+}
+
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const sharpProc = sharp(rawImageBuffer)
@@ -134,34 +193,13 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     let output = {...stateModel};
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
-        const charMask = landMark.charMask || "";
-
-        // Normalize rects minX/minY (for if frame has been cropped)
-        let normalizedRect = {...landMark.rect}; // Make a copy of the rect object
-        normalizedRect.left -= minX;
-        normalizedRect.top -= minY;
-
-        // If there is a rotation, apply it
-        let options;
-        if (landMark.radians) {
-            options = {
-                "rectangle": normalizedRect,
-                "rotateRadians": landMark.radians
-            };
-        } else {
-            options = {
-                "rectangle": normalizedRect,
-                "rotateAuto": true
-            };
+        switch (landMark.type) {
+            case "ocr":
+                return recognizeOCR(landMark, imageBuffer, minX, minY);
+            case "color":
+                return recognizeColor(landMark, rawImageBuffer, minX, minY);
         }
 
-        try {
-            const result = await workerPool.addJob(charMask, imageBuffer, options);
-            return {name: landMark.name, text: result.data.text};
-        } catch (error) {
-            console.error(`Error processing ${landMark.name}:`, error);
-            return {};
-        }
     });
 
     const landMarkNameTextPairs = await Promise.all(recognizePromises);
