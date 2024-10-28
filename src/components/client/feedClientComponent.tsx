@@ -67,18 +67,20 @@ const FeedClientComponent: React.FC = () => {
         <>
             <a href="/"><h1>Home</h1></a>
             <h2>{gameStateModel.constraints.displayName}</h2>
-            <video id="video" width="640" height="480"></video>
-            <table>
-                <thead>
-                <tr>
-                    <th>landMark</th>
-                    <th>value</th>
-                </tr>
-                </thead>
-                <tbody>
-                {dataFeed}
-                </tbody>
-            </table>
+            <div style={{display: "flex"}}>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>landMark</th>
+                        <th>value</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {dataFeed}
+                    </tbody>
+                </table>
+                <video id="video" width="640" height="480"></video>
+            </div>
         </>
     );
 };
