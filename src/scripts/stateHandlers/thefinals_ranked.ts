@@ -1,4 +1,10 @@
-import {LandMarkColorCount, LandMarkOCR, StateModel} from "../processGameFrame";
+import {
+    ColorsAndThresholds,
+    LandMarkColorCount,
+    LandMarkColorCountA,
+    LandMarkOCR,
+    StateModel
+} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {Simulate} from "react-dom/test-utils";
 import progress = Simulate.progress;
@@ -34,7 +40,7 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
 
     for (let i = 0; i < teams.length; i++) {
         const distanceToReference = colorDistance(referenceColor, teams[i].getColor);
-        // console.warn(`[${distanceToReference}] ${teams[i].name} - ${referenceColor}`);  // TODO debug
+
         if (distanceToReference < closestDistance) {
             closestDistance = distanceToReference;
             teamToPop = i;
@@ -134,7 +140,13 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         // console.warn("=== " + rank + " ===")
         const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
         sortedTeams.push(closestTeam);
-        remainingTeams = [...remainingTeams.slice(0, index), ...remainingTeams.slice(index + 1)];
+
+        try {
+            remainingTeams = [...remainingTeams.slice(0, index), ...remainingTeams.slice(index + 1)];
+        } catch (e) {
+            console.error(e);
+        }
+
     });
     sortedTeams.push(remainingTeams[0]);
 
@@ -173,11 +185,12 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
     captureGroups.forEach(captureGroup => {
         try {
-            const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCount;
-            const remainingStr = processedGameState.gameState.find(landmark => landmark.name === `captureRemaining_${captureGroup}`)! as LandMarkColorCount;
+            const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCountA;
 
-            const progress = parseInt(progressStr.VALUE!)
-            const remaining = parseInt(remainingStr.VALUE!)
+            const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
+
+            const progress = response["#FEE502"]
+            const remaining = response["#B0B000"]
 
             const percent = ((progress / (progress + remaining)) * 100);
 
@@ -197,4 +210,16 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     if (gameTimeRemainingLandmark!.VALUE) {
         gameTime.innerText = gameTimeRemainingLandmark!.VALUE;
     }
+
+    /**
+     * Track teams' cash
+     */
+    const cashLandMarks = ["score_firstCash", "score_secondCash", "score_thirdCash", "score_fourthCash"]
+
+    cashLandMarks.forEach(landmarkName => {
+        const targetDOM = document.getElementById(landmarkName)!;
+        const cashLandMark = processedGameState.gameState.find(landmark => landmark.name === landmarkName) as LandMarkOCR;
+
+        targetDOM.innerHTML = cashLandMark.VALUE || targetDOM.innerHTML;
+    })
 }

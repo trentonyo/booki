@@ -1,4 +1,8 @@
 export function hexToRgb(hex: string): { r: number, g: number, b: number } {
+    if (!/^#[0-9A-F]{6}$/i.test(hex)) {
+        throw new Error(`Invalid hex color input: ${hex}`);
+    }
+
     const bigint = parseInt(hex.slice(1), 16);
     return {
         r: (bigint >> 16) & 255,

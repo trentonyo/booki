@@ -51,6 +51,20 @@ export type LandMarkColorCount = {
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
 
+// Define the LandMarkColorCount type
+export type ColorsAndThresholds = {
+    [color: string]: number
+};
+
+export type LandMarkColorCountA = {
+    type: "colorCountA";
+    name: string;
+    rect: Rectangle;
+    pollPixels: number;
+    colorsAndThresholds: ColorsAndThresholds;
+    VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
+};
+
 // Define the Constraints type
 type Constraints = {
     displayName: string;
@@ -68,7 +82,7 @@ type Constraints = {
 // Define the StateModel type composing Constraints, an array of LandMark, and an optional game logic function
 export type StateModel = {
     constraints: Constraints;
-    gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount)[];
+    gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA)[];
 };
 
 /****************
@@ -114,7 +128,13 @@ async function recognizeColor(landMark: LandMarkColor, imageBuffer: Buffer, minX
 
     const [r, g, b] = await extractColorFromImage(imageBuffer, region);
 
-    const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+    let hexColor
+    try {
+        hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+    } catch (error) {
+        console.error(`Error processing ${landMark.name}:`, error);
+        return {name: landMark.name, text: "#FFFFFF"}
+    }
 
     return {name: landMark.name, text: hexColor};
 }
@@ -159,12 +179,75 @@ async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Bu
     results.forEach(result => {
         const [r, g, b] = result;
 
+        if (landMark.targetColor === undefined) {
+            throw new Error(`Malformed LandMarkColorCount: ${JSON.stringify(landMark, null, 2)}`);
+        }
+
         if (colorDistance(landMark.targetColor, rgbToHex(r,g,b)) <= landMark.threshold) {
             colorCount++;
         }
     })
 
     return {name: landMark.name, text: colorCount.toString()};
+}
+
+async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: Buffer, minX: number, minY: number) {
+    // Normalize rects minX/minY (for if frame has been cropped)
+    let region: Region = {...landMark.rect}; // Make a copy of the rect object
+    region.left -= minX;
+    region.top -= minY;
+
+    const squareSize = landMark.pollPixels;
+    const rows = Math.ceil(region.height / squareSize);
+    const cols = Math.ceil(region.width / squareSize);
+
+    let jobs = []
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            let squareRegion: Region = {
+                left: region.left + col * squareSize,
+                top: region.top + row * squareSize,
+                width: squareSize,
+                height: squareSize
+            };
+
+            // Ensure the region doesn't go out of the image bounds
+            if (squareRegion.left + squareRegion.width > region.left + region.width) {
+                squareRegion.width = region.left + region.width - squareRegion.left;
+            }
+            if (squareRegion.top + squareRegion.height > region.top + region.height) {
+                squareRegion.height = region.top + region.height - squareRegion.top;
+            }
+
+            // const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
+            jobs.push(extractColorFromImage(imageBuffer, squareRegion));
+
+        }
+    }
+
+    // Prepare the output dict
+    let output: {
+        [color: string]: number
+    } = {...landMark.colorsAndThresholds}
+    for (const color in output) {
+        output[color] = 0;
+    }
+
+    const results = await Promise.all(jobs);
+
+    results.forEach(result => {
+        const [r, g, b] = result;
+
+        for (const color in landMark.colorsAndThresholds) {
+            const threshold = landMark.colorsAndThresholds[color];
+
+            if (colorDistance(color, rgbToHex(r,g,b)) <= threshold) {
+                output[color]++;
+            }
+        }
+    })
+
+    return {name: landMark.name, text: JSON.stringify(output)};
 }
 
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
@@ -197,6 +280,8 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
                 return recognizeColor(landMark, rawImageBuffer, minX, minY);
             case "colorCount":
                 return recognizeColorCount(landMark, rawImageBuffer, minX, minY);
+            case "colorCountA":
+                return recognizeColorCountA(landMark, rawImageBuffer, minX, minY);
         }
 
     });
