@@ -1,8 +1,9 @@
 // server.ts
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import {initOCRWorkerPool, LandMarkOCR, processGameFrame, StateModel} from "./ocr";
+import {LandMarkOCR, processGameFrame, StateModel} from "./processGameFrame";
 import path from 'path';
+import {initOCRWorkerPool} from "./workOCR";
 
 const prisma = new PrismaClient();
 const app = express();

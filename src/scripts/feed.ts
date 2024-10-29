@@ -1,4 +1,4 @@
-import {StateModel, LandMarkOCR} from "../ocr";
+import {StateModel, LandMarkOCR} from "../processGameFrame";
 import {Rectangle} from "tesseract.js";
 
 //  IMPORTANT! See /server.ts for stateModels
