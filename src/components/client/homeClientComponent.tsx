@@ -17,14 +17,22 @@ export default function HomeClientComponent(gameStateModels: HomeClientComponent
             const encodedStateModelString = encodeURIComponent(stateModelString);
             const encodedGameString = encodeURIComponent(gameStateModel);
 
-            modelOptions.push(<li key={gameStateModel}><a href={`/feed?game=${encodedGameString}&stateModel=${encodedStateModelString}`}>{modelMap[gameStateModel].constraints.displayName}</a></li>)
+            modelOptions.push(
+                <div
+                    key={gameStateModel}
+                    className="model-option"
+                >
+                    <a href={`/feed?game=${encodedGameString}&stateModel=${encodedStateModelString}`}>
+                        {modelMap[gameStateModel].constraints.displayName}
+                    </a>
+                </div>)
         }
     }
 
     const modelList = (
-        <ul>
+        <div>
             {modelOptions}
-        </ul>
+        </div>
     )
 
     return (

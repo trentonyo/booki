@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import HomeServerComponent from './components/server/homeServerComponent';
 import FeedServerComponent from './components/server/feedServerComponent';
+import './output.css'
 
 const App: React.FC = () => {
     return (
