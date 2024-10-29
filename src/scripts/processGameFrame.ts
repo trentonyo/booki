@@ -131,6 +131,7 @@ async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Bu
 
     let colorCount = 0;
 
+    let jobs = []
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
             let squareRegion: Region = {
@@ -148,13 +149,20 @@ async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Bu
                 squareRegion.height = region.top + region.height - squareRegion.top;
             }
 
-            const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
+            // const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
+            jobs.push(extractColorFromImage(imageBuffer, squareRegion));
 
-            if (colorDistance(landMark.targetColor, rgbToHex(r,g,b)) <= landMark.threshold) {
-                colorCount++;
-            }
         }
     }
+
+    const results = await Promise.all(jobs);
+    results.forEach(result => {
+        const [r, g, b] = result;
+
+        if (colorDistance(landMark.targetColor, rgbToHex(r,g,b)) <= landMark.threshold) {
+            colorCount++;
+        }
+    })
 
     return {name: landMark.name, text: colorCount.toString()};
 }

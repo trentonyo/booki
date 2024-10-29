@@ -1,4 +1,4 @@
-import {LandMarkColorCount, StateModel} from "../processGameFrame";
+import {LandMarkColorCount, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {Simulate} from "react-dom/test-utils";
 import progress = Simulate.progress;
@@ -186,8 +186,15 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         } catch {
 
         }
-
-
     })
 
+    /**
+     * Track the game timer
+     */
+    const gameTime = document.getElementById("game_timeRemaining")!;
+    const gameTimeRemainingLandmark = processedGameState.gameState.find(landmark => landmark.name === "game_timeRemaining") as LandMarkOCR;
+
+    if (gameTimeRemainingLandmark!.VALUE) {
+        gameTime.innerText = gameTimeRemainingLandmark!.VALUE;
+    }
 }

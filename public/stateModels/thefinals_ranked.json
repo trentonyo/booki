@@ -36,7 +36,7 @@
       "type": "colorCount",
       "name": "captureProgress_first",
       "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#FEE502",
       "threshold": 45
     },
@@ -44,7 +44,7 @@
       "type": "colorCount",
       "name": "captureRemaining_first",
       "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#B0B000",
       "threshold": 45
     },
@@ -52,7 +52,7 @@
       "type": "colorCount",
       "name": "captureProgress_second",
       "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#FEE502",
       "threshold": 50
     },
@@ -60,7 +60,7 @@
       "type": "colorCount",
       "name": "captureRemaining_second",
       "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#B0B000",
       "threshold": 50
     },
@@ -68,7 +68,7 @@
       "type": "colorCount",
       "name": "captureProgress_third",
       "rect": {"left": 170, "top": 274, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#FEE502",
       "threshold": 55
     },
@@ -76,7 +76,7 @@
       "type": "colorCount",
       "name": "captureRemaining_third",
       "rect": {"left": 170, "top": 274, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#B0B000",
       "threshold": 55
     },
@@ -84,7 +84,7 @@
       "type": "colorCount",
       "name": "captureProgress_fourth",
       "rect": {"left": 170, "top": 327, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#FEE502",
       "threshold": 60
     },
@@ -92,7 +92,7 @@
       "type": "colorCount",
       "name": "captureRemaining_fourth",
       "rect": {"left": 170, "top": 327, "width": 200, "height": 48},
-      "pollPixels": 10,
+      "pollPixels": 16,
       "targetColor": "#B0B000",
       "threshold": 60
     },
