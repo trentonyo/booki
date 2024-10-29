@@ -19,11 +19,11 @@ export default function HomeClientComponent(gameStateModels: HomeClientComponent
 
             modelOptions.push(
                 <a
+                    key={gameStateModel.substring(0,32)}
                     className="w-full"
                     href={`/feed?game=${encodedGameString}&stateModel=${encodedStateModelString}`}
                 >
                     <div
-                        key={gameStateModel}
                         className="text-xl bg-blue-900 text-blue-50 rounded-md p-10"
                     >
                         {modelMap[gameStateModel].constraints.displayName}

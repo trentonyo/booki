@@ -1,8 +1,9 @@
 // server.ts
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import {initWorkerPool, LandMarkOCR, processGameFrame, StateModel} from "./ocr";
+import {LandMarkOCR, processGameFrame, StateModel} from "./scripts/processGameFrame";
 import path from 'path';
+import {initOCRWorkerPool} from "./scripts/workOCR";
 
 const prisma = new PrismaClient();
 const app = express();
@@ -35,7 +36,7 @@ function initGameStateModels(workers: number) {
         }
     }
 
-    initWorkerPool(allCharMasks, workers);
+    initOCRWorkerPool(allCharMasks, workers);
 }
 
 app.get('/api/game-state-models', (req, res) => {
@@ -68,6 +69,6 @@ app.get('/feed', (req, res) => {
 });
 
 app.listen(port, () => {
-    initGameStateModels(16);
+    initGameStateModels(24);
     console.log(`OCR service listening at http://${host}:${port}`);
 });

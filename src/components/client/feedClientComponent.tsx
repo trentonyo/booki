@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { StateModelMap } from "../../server";
-import { StateModel } from "../../ocr";
+import { StateModel } from "../../scripts/processGameFrame";
 import { startCamera } from "../../scripts/feed";
 
 const FeedClientComponent: React.FC = () => {

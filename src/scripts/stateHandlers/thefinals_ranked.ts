@@ -1,26 +1,16 @@
-import {StateModel} from "../../ocr";
-import sharp, {Color} from "sharp";
+import {
+    ColorsAndThresholds,
+    LandMarkColorCount,
+    LandMarkColorCountA,
+    LandMarkOCR,
+    StateModel
+} from "../processGameFrame";
+import {colorDistance} from "../colorUtil";
+import {Simulate} from "react-dom/test-utils";
+import progress = Simulate.progress;
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
-
-function hexToRgb(hex: string): { r: number, g: number, b: number } {
-    const bigint = parseInt(hex.slice(1), 16);
-    return {
-        r: (bigint >> 16) & 255,
-        g: (bigint >> 8) & 255,
-        b: bigint & 255
-    };
-}
-
-function colorDistance(color1: string, color2: string): number {
-    const rgb1 = hexToRgb(color1);
-    const rgb2 = hexToRgb(color2);
-    const rDiff = rgb1.r - rgb2.r;
-    const gDiff = rgb1.g - rgb2.g;
-    const bDiff = rgb1.b - rgb2.b;
-    return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
-}
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000],
@@ -50,6 +40,7 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
 
     for (let i = 0; i < teams.length; i++) {
         const distanceToReference = colorDistance(referenceColor, teams[i].getColor);
+
         if (distanceToReference < closestDistance) {
             closestDistance = distanceToReference;
             teamToPop = i;
@@ -146,9 +137,16 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
     ranks.forEach(rank => {
         const referenceColor = processedGameState.gameState.find(landmark => landmark.name === rank)!.VALUE! as string;
+        // console.warn("=== " + rank + " ===")
         const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
         sortedTeams.push(closestTeam);
-        remainingTeams = [...remainingTeams.slice(0, index), ...remainingTeams.slice(index + 1)];
+
+        try {
+            remainingTeams = [...remainingTeams.slice(0, index), ...remainingTeams.slice(index + 1)];
+        } catch (e) {
+            console.error(e);
+        }
+
     });
     sortedTeams.push(remainingTeams[0]);
 
@@ -179,4 +177,49 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         target!.innerText = team.name;
         target!.style.backgroundColor = team.getColor;
     }
+
+    /**
+     * Track the current deposits
+     */
+    const captureGroups = ["first", "second", "third", "fourth"];
+
+    captureGroups.forEach(captureGroup => {
+        try {
+            const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCountA;
+
+            const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
+
+            const progress = response["#FEE502"]
+            const remaining = response["#B0B000"]
+
+            const percent = ((progress / (progress + remaining)) * 100);
+
+            const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
+            readOut.innerText = isNaN(percent) ? "--" : `${percent.toFixed()}%`
+        } catch {
+
+        }
+    })
+
+    /**
+     * Track the game timer
+     */
+    const gameTime = document.getElementById("game_timeRemaining")!;
+    const gameTimeRemainingLandmark = processedGameState.gameState.find(landmark => landmark.name === "game_timeRemaining") as LandMarkOCR;
+
+    if (gameTimeRemainingLandmark!.VALUE) {
+        gameTime.innerText = gameTimeRemainingLandmark!.VALUE;
+    }
+
+    /**
+     * Track teams' cash
+     */
+    const cashLandMarks = ["score_firstCash", "score_secondCash", "score_thirdCash", "score_fourthCash"]
+
+    cashLandMarks.forEach(landmarkName => {
+        const targetDOM = document.getElementById(landmarkName)!;
+        const cashLandMark = processedGameState.gameState.find(landmark => landmark.name === landmarkName) as LandMarkOCR;
+
+        targetDOM.innerHTML = cashLandMark.VALUE || targetDOM.innerHTML;
+    })
 }

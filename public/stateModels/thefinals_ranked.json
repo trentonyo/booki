@@ -3,7 +3,7 @@
     "displayName": "THE FINALS: Ranked (elimination rounds)",
     "width": 2560,
     "height": 1440,
-    "refreshEvery": 333,
+    "refreshEvery": 400,
     "invert": true,
     "tint": {
       "r": 255,
@@ -18,19 +18,59 @@
       "rect": {"left": 120, "top": 84, "width": 10, "height": 10}
     },
     {
-    "type": "color",
-    "name": "color_second",
-    "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
+      "type": "color",
+      "name": "color_second",
+      "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
     },
     {
-    "type": "color",
-    "name": "color_third",
-    "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
+      "type": "color",
+      "name": "color_third",
+      "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
     },
     {
-    "type": "color",
-    "name": "color_fourth",
-    "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
+      "type": "color",
+      "name": "color_fourth",
+      "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress_first",
+      "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
+      "pollPixels": 12,
+      "colorsAndThresholds": {
+        "#FEE502": 45,
+        "#B0B000": 45
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress_second",
+      "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
+      "pollPixels": 12,
+      "colorsAndThresholds": {
+        "#FEE502": 45,
+        "#B0B000": 45
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress_third",
+      "rect": {"left": 170, "top": 274, "width": 200, "height": 48},
+      "pollPixels": 12,
+      "colorsAndThresholds": {
+        "#FEE502": 45,
+        "#B0B000": 45
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress_fourth",
+      "rect": {"left": 170, "top": 327, "width": 200, "height": 48},
+      "pollPixels": 12,
+      "colorsAndThresholds": {
+        "#FEE502": 45,
+        "#B0B000": 45
+      }
     },
     {
       "type": "ocr",
@@ -65,7 +105,7 @@
       "name": "game_timeRemaining",
       "rect": {"left": 1227, "top": 64, "width": 105, "height": 120},
       "charMask": ":+1234567890",
-      "validRegex": "^\\d?\\d:\\d\\d(\\n\\+\\d?\\d:[0-5]\\d)?$"
+      "validRegex": "^[1-2]?\\d:\\d\\d(\\n\\+\\d?\\d:[0-5]\\d)?$"
     }
   ]
 }

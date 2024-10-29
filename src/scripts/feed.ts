@@ -1,4 +1,4 @@
-import {StateModel, LandMarkOCR} from "../ocr";
+import {StateModel, LandMarkOCR} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
 
 //  IMPORTANT! See /server.ts for stateModels
@@ -33,9 +33,6 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         maxX = Math.max(maxX, landmark.rect.left + landmark.rect.width)
         maxY = Math.max(maxY, landmark.rect.top + landmark.rect.height)
 
-        // TODO debug
-        // console.warn(landmark.name)
-
         // Collect valid regex
         try {
             const landMarkOCR = landmark as LandMarkOCR;
@@ -52,9 +49,6 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     // Normalize maxX/maxY
     maxX -= minX;
     maxY -= minY;
-
-    // TODO debug
-    // console.log(`minX: ${minX} minY: ${minY} maxX: ${maxX} maxY: ${maxY}`);
 
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
     const video = document.getElementById('video') as HTMLVideoElement;
