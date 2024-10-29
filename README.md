@@ -7,15 +7,17 @@ _Take your chances, and read them, too._
 ## Overview
 
 - Live image recognition
-- Highly performant
+- Highly performant*
 - Modular
 
 The platform takes periodic images from your screen and runs them through a 
 highly performant image recognition processor against light data validation
-defined for any given game*.
+defined for any given game**.
 
-Specialized scripts use the game's logic to predict win probability over the 
-course of the game, while it's being played.
+_* Have not tested yet today (10/29/2024), the color counting may have tanked performance._
+
+_** Specialized scripts use the game's logic/rules to clean up noisy data and predict win probability over the 
+course of the game, while it's being played._
 
 -------------
 
