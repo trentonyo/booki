@@ -176,14 +176,13 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCount;
             const remainingStr = processedGameState.gameState.find(landmark => landmark.name === `captureRemaining_${captureGroup}`)! as LandMarkColorCount;
 
-            console.log(`==${captureGroup}== progress: ${progressStr.VALUE}    | remainingStr: ${remainingStr.VALUE}`);
             const progress = parseInt(progressStr.VALUE!)
             const remaining = parseInt(remainingStr.VALUE!)
 
-            const percent = ((progress / (progress + remaining)) * 100).toFixed();
+            const percent = ((progress / (progress + remaining)) * 100);
 
             const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
-            readOut.innerText = percent ? `${percent}%` : "--"
+            readOut.innerText = isNaN(percent) ? "--" : `${percent.toFixed()}%`
         } catch {
 
         }

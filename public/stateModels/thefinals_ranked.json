@@ -3,7 +3,7 @@
     "displayName": "THE FINALS: Ranked (elimination rounds)",
     "width": 2560,
     "height": 1440,
-    "refreshEvery": 500,
+    "refreshEvery": 650,
     "invert": true,
     "tint": {
       "r": 255,
@@ -35,66 +35,66 @@
     {
       "type": "colorCount",
       "name": "captureProgress_first",
-      "rect": {"left": 170, "top": 114, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#FEE502",
-      "threshold": 20
+      "threshold": 45
     },
     {
       "type": "colorCount",
       "name": "captureRemaining_first",
-      "rect": {"left": 170, "top": 114, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#B0B000",
-      "threshold": 20
+      "threshold": 45
     },
     {
       "type": "colorCount",
       "name": "captureProgress_second",
-      "rect": {"left": 170, "top": 166, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#FEE502",
-      "threshold": 20
+      "threshold": 50
     },
     {
       "type": "colorCount",
       "name": "captureRemaining_second",
-      "rect": {"left": 170, "top": 166, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#B0B000",
-      "threshold": 20
+      "threshold": 50
     },
     {
       "type": "colorCount",
       "name": "captureProgress_third",
-      "rect": {"left": 170, "top": 270, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 274, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#FEE502",
-      "threshold": 20
+      "threshold": 55
     },
     {
       "type": "colorCount",
       "name": "captureRemaining_third",
-      "rect": {"left": 170, "top": 270, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 274, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#B0B000",
-      "threshold": 20
+      "threshold": 55
     },
     {
       "type": "colorCount",
       "name": "captureProgress_fourth",
-      "rect": {"left": 170, "top": 323, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 327, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#FEE502",
-      "threshold": 20
+      "threshold": 60
     },
     {
       "type": "colorCount",
       "name": "captureRemaining_fourth",
-      "rect": {"left": 170, "top": 323, "width": 355, "height": 53},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 327, "width": 200, "height": 48},
+      "pollPixels": 10,
       "targetColor": "#B0B000",
-      "threshold": 20
+      "threshold": 60
     },
     {
       "type": "ocr",
