@@ -50,6 +50,7 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
 
     for (let i = 0; i < teams.length; i++) {
         const distanceToReference = colorDistance(referenceColor, teams[i].getColor);
+        console.warn(`[${distanceToReference}] ${teams[i].name} - ${referenceColor}`);  // TODO debug
         if (distanceToReference < closestDistance) {
             closestDistance = distanceToReference;
             teamToPop = i;
@@ -146,6 +147,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
     ranks.forEach(rank => {
         const referenceColor = processedGameState.gameState.find(landmark => landmark.name === rank)!.VALUE! as string;
+        console.warn("=== " + rank + " ===")
         const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
         sortedTeams.push(closestTeam);
         remainingTeams = [...remainingTeams.slice(0, index), ...remainingTeams.slice(index + 1)];

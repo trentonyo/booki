@@ -27,6 +27,7 @@ export type LandMarkColor = {
     type: "color";
     name: string;
     rect: Rectangle;
+    threshold?: number; // un-restricted number for use with specialized scripts
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
 
