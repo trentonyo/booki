@@ -18,26 +18,36 @@ export default function HomeClientComponent(gameStateModels: HomeClientComponent
             const encodedGameString = encodeURIComponent(gameStateModel);
 
             modelOptions.push(
-                <div
-                    key={gameStateModel}
-                    className="model-option"
+                <a
+                    className="w-full"
+                    href={`/feed?game=${encodedGameString}&stateModel=${encodedStateModelString}`}
                 >
-                    <a href={`/feed?game=${encodedGameString}&stateModel=${encodedStateModelString}`}>
+                    <div
+                        key={gameStateModel}
+                        className="text-xl bg-blue-900 text-blue-50 rounded-md p-10"
+                    >
                         {modelMap[gameStateModel].constraints.displayName}
-                    </a>
-                </div>)
+                    </div>
+                </a>)
         }
     }
 
     const modelList = (
-        <div>
+        <div
+            className="flex flex-col justify-center items-center gap-10 w-1/2 mx-auto"
+        >
+            <h2
+                className="text-2xl font-semibold italic p-6 text-blue-900"
+            >
+                Select a game state model to start:
+            </h2>
             {modelOptions}
         </div>
     )
 
     return (
         <div>
-            <h1>booki</h1>
+            <h1 className="text-4xl font-bold p-14">booki</h1>
             {modelList}
         </div>
     )

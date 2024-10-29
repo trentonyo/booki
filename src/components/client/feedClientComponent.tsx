@@ -65,9 +65,16 @@ const FeedClientComponent: React.FC = () => {
 
     return (
         <>
-            <a href="/"><h1>Home</h1></a>
-            <h2>{gameStateModel.constraints.displayName}</h2>
-            <div style={{display: "flex"}}>
+            <a href="/"><h1 className="text-xl underline p-6 italic">🡠 Return Home</h1></a>
+            <h2
+                className="text-3xl font-bold p-14  text-blue-900 italic"
+            >
+                {gameStateModel.constraints.displayName}
+            </h2>
+            <div
+                id="raw_data"
+                className="flex gap-4"
+            >
                 <table>
                     <thead>
                     <tr>
