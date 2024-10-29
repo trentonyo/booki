@@ -1,6 +1,7 @@
 import { createScheduler, createWorker, Scheduler, Worker } from 'tesseract.js';
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
+import {colorDistance, rgbToHex} from "./scripts/colorUtil";
 
 async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
     const extractedRegion = await sharp(imageBuffer)
@@ -190,16 +191,39 @@ async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Bu
     let region: Region = {...landMark.rect}; // Make a copy of the rect object
     region.left -= minX;
     region.top -= minY;
-    
-    const extractedRegion = await sharp(imageBuffer)
-        .extract(region)
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-    const [r, g, b] = extractedRegion.data;
 
-    const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+    const squareSize = landMark.pollPixels;
+    const rows = Math.ceil(region.height / squareSize);
+    const cols = Math.ceil(region.width / squareSize);
 
-    return {name: landMark.name, text: hexColor};
+    let colorCount = 0;
+
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            let squareRegion: Region = {
+                left: region.left + col * squareSize,
+                top: region.top + row * squareSize,
+                width: squareSize,
+                height: squareSize
+            };
+
+            // Ensure the region doesn't go out of the image bounds
+            if (squareRegion.left + squareRegion.width > region.left + region.width) {
+                squareRegion.width = region.left + region.width - squareRegion.left;
+            }
+            if (squareRegion.top + squareRegion.height > region.top + region.height) {
+                squareRegion.height = region.top + region.height - squareRegion.top;
+            }
+
+            const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
+
+            if (colorDistance(landMark.targetColor, rgbToHex(r,g,b)) <= landMark.threshold) {
+                colorCount++;
+            }
+        }
+    }
+
+    return {name: landMark.name, text: colorCount.toString()};
 }
 
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {

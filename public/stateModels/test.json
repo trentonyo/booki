@@ -1,6 +1,6 @@
 {
   "constraints": {
-    "displayName": "TEST: 200x100 square",
+    "displayName": "TEST: Demonstrations",
     "width": 2560,
     "height": 1440,
     "refreshEvery": 333,
@@ -14,17 +14,26 @@
   "gameState": [
     {
       "type":  "ocr",
-      "name": "defining_radians_does_not_help_much",
-      "rect": {"left": 500, "top": 400, "width": 200, "height": 100, "radians": 0.1769764},
-      "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
-    },
-    {
-      "type":  "ocr",
       "name": "autoRotateTest",
       "rect": {"left": 500, "top": 500, "width": 200, "height": 100},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
+    },
+    {
+      "type": "colorCount",
+      "name": "red_colorCountTest",
+      "rect": {"left": 300, "top": 300, "width": 200, "height": 20},
+      "pollPixels": 4,
+      "targetColor": "#FF0000",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "blu_colorCountTest",
+      "rect": {"left": 300, "top": 300, "width": 200, "height": 20},
+      "pollPixels": 4,
+      "targetColor": "#0000FF",
+      "threshold": 20
     }
   ]
 }

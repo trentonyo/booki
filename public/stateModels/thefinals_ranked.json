@@ -18,19 +18,83 @@
       "rect": {"left": 120, "top": 84, "width": 10, "height": 10}
     },
     {
-    "type": "color",
-    "name": "color_second",
-    "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
+      "type": "color",
+      "name": "color_second",
+      "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
     },
     {
-    "type": "color",
-    "name": "color_third",
-    "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
+      "type": "color",
+      "name": "color_third",
+      "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
     },
     {
-    "type": "color",
-    "name": "color_fourth",
-    "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
+      "type": "color",
+      "name": "color_fourth",
+      "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
+    },
+    {
+      "type": "colorCount",
+      "name": "captureProgress_first",
+      "rect": {"left": 170, "top": 114, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#FEE502",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureRemaining_first",
+      "rect": {"left": 170, "top": 114, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#B0B000",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureProgress_second",
+      "rect": {"left": 170, "top": 166, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#FEE502",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureRemaining_second",
+      "rect": {"left": 170, "top": 166, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#B0B000",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureProgress_third",
+      "rect": {"left": 170, "top": 270, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#FEE502",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureRemaining_third",
+      "rect": {"left": 170, "top": 270, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#B0B000",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureProgress_fourth",
+      "rect": {"left": 170, "top": 323, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#FEE502",
+      "threshold": 20
+    },
+    {
+      "type": "colorCount",
+      "name": "captureRemaining_fourth",
+      "rect": {"left": 170, "top": 323, "width": 355, "height": 53},
+      "pollPixels": 12,
+      "targetColor": "#B0B000",
+      "threshold": 20
     },
     {
       "type": "ocr",

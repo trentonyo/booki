@@ -1,5 +1,7 @@
-import {StateModel} from "../../ocr";
+import {LandMarkColorCount, StateModel} from "../../ocr";
 import {colorDistance} from "../colorUtil";
+import {Simulate} from "react-dom/test-utils";
+import progress = Simulate.progress;
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
@@ -32,7 +34,7 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
 
     for (let i = 0; i < teams.length; i++) {
         const distanceToReference = colorDistance(referenceColor, teams[i].getColor);
-        console.warn(`[${distanceToReference}] ${teams[i].name} - ${referenceColor}`);  // TODO debug
+        // console.warn(`[${distanceToReference}] ${teams[i].name} - ${referenceColor}`);  // TODO debug
         if (distanceToReference < closestDistance) {
             closestDistance = distanceToReference;
             teamToPop = i;
@@ -129,7 +131,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
     ranks.forEach(rank => {
         const referenceColor = processedGameState.gameState.find(landmark => landmark.name === rank)!.VALUE! as string;
-        console.warn("=== " + rank + " ===")
+        // console.warn("=== " + rank + " ===")
         const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
         sortedTeams.push(closestTeam);
         remainingTeams = [...remainingTeams.slice(0, index), ...remainingTeams.slice(index + 1)];
@@ -163,4 +165,30 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         target!.innerText = team.name;
         target!.style.backgroundColor = team.getColor;
     }
+
+    /**
+     * Track the current deposits
+     */
+    const captureGroups = ["first", "second", "third", "fourth"];
+
+    captureGroups.forEach(captureGroup => {
+        try {
+            const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCount;
+            const remainingStr = processedGameState.gameState.find(landmark => landmark.name === `captureRemaining_${captureGroup}`)! as LandMarkColorCount;
+
+            console.log(`==${captureGroup}== progress: ${progressStr.VALUE}    | remainingStr: ${remainingStr.VALUE}`);
+            const progress = parseInt(progressStr.VALUE!)
+            const remaining = parseInt(remainingStr.VALUE!)
+
+            const percent = ((progress / (progress + remaining)) * 100).toFixed();
+
+            const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
+            readOut.innerText = percent ? `${percent}%` : "--"
+        } catch {
+
+        }
+
+
+    })
+
 }
