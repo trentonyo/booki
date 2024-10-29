@@ -1,26 +1,8 @@
 import {StateModel} from "../../ocr";
-import sharp, {Color} from "sharp";
+import {colorDistance} from "../colorUtil";
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
-
-function hexToRgb(hex: string): { r: number, g: number, b: number } {
-    const bigint = parseInt(hex.slice(1), 16);
-    return {
-        r: (bigint >> 16) & 255,
-        g: (bigint >> 8) & 255,
-        b: bigint & 255
-    };
-}
-
-function colorDistance(color1: string, color2: string): number {
-    const rgb1 = hexToRgb(color1);
-    const rgb2 = hexToRgb(color2);
-    const rDiff = rgb1.r - rgb2.r;
-    const gDiff = rgb1.g - rgb2.g;
-    const bDiff = rgb1.b - rgb2.b;
-    return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
-}
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000],

@@ -2,6 +2,15 @@ import { createScheduler, createWorker, Scheduler, Worker } from 'tesseract.js';
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
 
+async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
+    const extractedRegion = await sharp(imageBuffer)
+        .extract(region)
+        .resize({width: 1, height: 1}) // Resize to 1x1 to get average color
+        .raw()
+        .toBuffer({resolveWithObject: true});
+    return extractedRegion.data;
+}
+
 // Define the Rectangle type
 type Rectangle = {
     left: number;
@@ -21,13 +30,23 @@ export type LandMarkOCR = {
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR  
 };
 
-
 // Define the LandMarkColor type
 export type LandMarkColor = {
     type: "color";
     name: string;
     rect: Rectangle;
     threshold?: number; // un-restricted number for use with specialized scripts
+    VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
+};
+
+// Define the LandMarkColorCount type
+export type LandMarkColorCount = {
+    type: "colorCount";
+    name: string;
+    rect: Rectangle;
+    pollPixels: number;
+    targetColor: string;
+    threshold: number;
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
 
@@ -48,7 +67,7 @@ type Constraints = {
 // Define the StateModel type composing Constraints, an array of LandMark, and an optional game logic function
 export type StateModel = {
     constraints: Constraints;
-    gameState: (LandMarkOCR | LandMarkColor)[];
+    gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount)[];
 };
 
 // Define the WorkerPool class for handling OCR jobs
@@ -159,9 +178,21 @@ async function recognizeColor(landMark: LandMarkColor, imageBuffer: Buffer, minX
     region.left -= minX;
     region.top -= minY;
 
+    const [r, g, b] = await extractColorFromImage(imageBuffer, region);
+
+    const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+
+    return {name: landMark.name, text: hexColor};
+}
+
+async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Buffer, minX: number, minY: number) {
+    // Normalize rects minX/minY (for if frame has been cropped)
+    let region: Region = {...landMark.rect}; // Make a copy of the rect object
+    region.left -= minX;
+    region.top -= minY;
+    
     const extractedRegion = await sharp(imageBuffer)
         .extract(region)
-        .resize({ width: 1, height: 1 }) // Resize to 1x1 to get average color
         .raw()
         .toBuffer({ resolveWithObject: true });
     const [r, g, b] = extractedRegion.data;
@@ -199,6 +230,8 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
                 return recognizeOCR(landMark, imageBuffer, minX, minY);
             case "color":
                 return recognizeColor(landMark, rawImageBuffer, minX, minY);
+            case "colorCount":
+                return recognizeColorCount(landMark, rawImageBuffer, minX, minY);
         }
 
     });
