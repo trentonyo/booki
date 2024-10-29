@@ -1,4 +1,4 @@
-import {LandMarkColorCount, StateModel} from "../../processGameFrame";
+import {LandMarkColorCount, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {Simulate} from "react-dom/test-utils";
 import progress = Simulate.progress;

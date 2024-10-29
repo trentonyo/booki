@@ -1,6 +1,6 @@
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
-import {colorDistance, rgbToHex} from "./scripts/colorUtil";
+import {colorDistance, rgbToHex} from "./colorUtil";
 import {getOCRWorkerPool} from "./workOCR";
 
 async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
