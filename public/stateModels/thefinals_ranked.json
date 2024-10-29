@@ -3,7 +3,7 @@
     "displayName": "THE FINALS: Ranked (elimination rounds)",
     "width": 2560,
     "height": 1440,
-    "refreshEvery": 333,
+    "refreshEvery": 500,
     "invert": true,
     "tint": {
       "r": 255,

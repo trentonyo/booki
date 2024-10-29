@@ -71,19 +71,19 @@ export type StateModel = {
     gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount)[];
 };
 
-// Define the WorkerPool class for handling OCR jobs
-class WorkerPool {
+// Define the OCRWorkerPool class for handling OCR jobs
+class OCRWorkerPool {
     private schedulers: { [charMask: string]: Scheduler } = {};
     private workers: { [charMask: string]: Worker[] } = {};
 
     constructor(charMasks: string[], numberOfWorkersPerMask: number) {
         const uniqueCharMasks = Array.from(new Set(charMasks));
-        this.initWorkers(uniqueCharMasks, numberOfWorkersPerMask).then(() => {
+        this.initOCRWorkers(uniqueCharMasks, numberOfWorkersPerMask).then(() => {
             console.log("Worker pools initialized for charMasks:", uniqueCharMasks);
         });
     }
 
-    private async initWorkers(charMasks: string[], numberOfWorkersPerMask: number) {
+    private async initOCRWorkers(charMasks: string[], numberOfWorkersPerMask: number) {
         for (let charMask of charMasks) {
             if (charMask === undefined) {
                 charMask = ""
@@ -102,7 +102,7 @@ class WorkerPool {
         }
     }
 
-    public addJob(charMask: string, imageBuffer: Buffer, options: any) {
+    public addOCRJob(charMask: string, imageBuffer: Buffer, options: any) {
         const output = {
             text: true,
             blocks: false,
@@ -126,20 +126,20 @@ class WorkerPool {
         return scheduler.addJob("recognize", imageBuffer, options, output);
     }
 
-    public async terminate() {
+    public async terminateOCRWorkerPool() {
         for (const charMask in this.schedulers) {
             await this.schedulers[charMask].terminate();
         }
     }
 }
 
-let workerPool: WorkerPool;
-export function getWorkerPool() {
-    return workerPool;
+let workerPoolOCR: OCRWorkerPool;
+export function getOCRWorkerPool() {
+    return workerPoolOCR;
 }
 
-export function initWorkerPool(charMasks: string[], numberOfWorkersPerMask: number) {
-    workerPool = new WorkerPool(charMasks, numberOfWorkersPerMask); // Adjust the number of workers per char mask as needed
+export function initOCRWorkerPool(charMasks: string[], numberOfWorkersPerMask: number) {
+    workerPoolOCR = new OCRWorkerPool(charMasks, numberOfWorkersPerMask); // Adjust the number of workers per char mask as needed
 }
 
 async function recognizeOCR(landMark: LandMarkOCR, imageBuffer: Buffer, minX: number, minY: number) {
@@ -165,7 +165,7 @@ async function recognizeOCR(landMark: LandMarkOCR, imageBuffer: Buffer, minX: nu
     }
 
     try {
-        const result = await workerPool.addJob(charMask, imageBuffer, options);
+        const result = await workerPoolOCR.addOCRJob(charMask, imageBuffer, options);
         return {name: landMark.name, text: result.data.text};
     } catch (error) {
         console.error(`Error processing ${landMark.name}:`, error);
