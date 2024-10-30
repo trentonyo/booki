@@ -189,16 +189,21 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
             const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
 
-            const progress = response["#FEE502"]
-            const remaining = response["#B0B000"]
-
-            const percent = ((progress / (progress + remaining)) * 100);
+            const progress = response["#CEC821"]
+            const remaining = response["#877E0A"]
 
             const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
-            readOut.innerText = isNaN(percent) ? "--" : `${percent.toFixed()}%`
-        } catch {
 
-        }
+            // Should filter out random pops of color
+            if (progress + remaining > 5) {
+
+                const percent = ((progress / (progress + remaining)) * 100);
+                readOut.innerText = isNaN(percent) ? "--" : `${percent.toFixed()}%` // TODO replace with a dragging average
+            } else {
+                readOut.innerText = "--";
+            }
+
+        } catch (e) {}
     })
 
     /**

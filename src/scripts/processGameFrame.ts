@@ -1,6 +1,6 @@
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
-import {colorDistance, rgbToHex} from "./colorUtil";
+import {colorDistance, distanceAlgorithms, divideIntoRegions, rgbToHex} from "./colorUtil";
 import {getOCRWorkerPool} from "./workOCR";
 
 async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
@@ -20,11 +20,15 @@ type Rectangle = {
     height: number;
 };
 
-// Define the LandMarkOCR type
-export type LandMarkOCR = {
-    type: "ocr";
+type LandMarkCommon = {
     name: string;
     rect: Rectangle;
+    step?: number; // Defines how many steps of processing must pass before this landmark is read (default 1)
+};
+
+// Define the LandMarkOCR type
+export type LandMarkOCR = LandMarkCommon & {
+    type: "ocr";
     radians?: number; // rotation is optional
     charMask?: string; // charMask is optional
     validRegex?: string; // validRegex is optional
@@ -32,21 +36,19 @@ export type LandMarkOCR = {
 };
 
 // Define the LandMarkColor type
-export type LandMarkColor = {
+export type LandMarkColor = LandMarkCommon & {
     type: "color";
-    name: string;
-    rect: Rectangle;
+    distanceAlgorithm?: distanceAlgorithms;
     threshold?: number; // un-restricted number for use with specialized scripts
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
 
 // Define the LandMarkColorCount type
-export type LandMarkColorCount = {
+export type LandMarkColorCount = LandMarkCommon & {
     type: "colorCount";
-    name: string;
-    rect: Rectangle;
     pollPixels: number;
     targetColor: string;
+    distanceAlgorithm?: distanceAlgorithms;
     threshold: number;
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
@@ -56,11 +58,10 @@ export type ColorsAndThresholds = {
     [color: string]: number
 };
 
-export type LandMarkColorCountA = {
+export type LandMarkColorCountA = LandMarkCommon & {
     type: "colorCountA";
-    name: string;
-    rect: Rectangle;
     pollPixels: number;
+    distanceAlgorithm?: distanceAlgorithms;
     colorsAndThresholds: ColorsAndThresholds;
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
@@ -141,91 +142,81 @@ async function recognizeColor(landMark: LandMarkColor, imageBuffer: Buffer, minX
 
 async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Buffer, minX: number, minY: number) {
     // Normalize rects minX/minY (for if frame has been cropped)
-    let region: Region = {...landMark.rect}; // Make a copy of the rect object
+    let region: Region = { ...landMark.rect }; // Make a copy of the rect object
     region.left -= minX;
     region.top -= minY;
+    const originalRegion = { ...region }; // Hold the original
 
-    const squareSize = landMark.pollPixels;
-    const rows = Math.ceil(region.height / squareSize);
-    const cols = Math.ceil(region.width / squareSize);
+    // Calculate new dimensions
+    region.left = Math.ceil(region.left / landMark.pollPixels);
+    region.top = Math.ceil(region.top / landMark.pollPixels);
+    region.width = Math.ceil(region.width / landMark.pollPixels);
+    region.height = Math.ceil(region.height / landMark.pollPixels);
+
+    const resizedWidth = region.width;
+    const resizedHeight = region.height;
+
+    // Resize the entire image
+    const resizedImageBuffer = await sharp(imageBuffer)
+        .extract(originalRegion) // Extract the original region first
+        .resize({ width: resizedWidth, height: resizedHeight }) // Resize to poll size
+        .raw()
+        .toBuffer();
 
     let colorCount = 0;
 
-    let jobs = []
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            let squareRegion: Region = {
-                left: region.left + col * squareSize,
-                top: region.top + row * squareSize,
-                width: squareSize,
-                height: squareSize
-            };
+    // Process the resized image pixels
+    for (let row = 0; row < resizedHeight; row++) {
+        for (let col = 0; col < resizedWidth; col++) {
+            const pixelIndex = (row * resizedWidth + col) * 3;
+            const r = resizedImageBuffer[pixelIndex];
+            const g = resizedImageBuffer[pixelIndex + 1];
+            const b = resizedImageBuffer[pixelIndex + 2];
 
-            // Ensure the region doesn't go out of the image bounds
-            if (squareRegion.left + squareRegion.width > region.left + region.width) {
-                squareRegion.width = region.left + region.width - squareRegion.left;
+            const pixelColor = rgbToHex(r, g, b);
+            if (colorDistance(pixelColor, landMark.targetColor, landMark.distanceAlgorithm) <= landMark.threshold) {
+                colorCount++;
             }
-            if (squareRegion.top + squareRegion.height > region.top + region.height) {
-                squareRegion.height = region.top + region.height - squareRegion.top;
-            }
-
-            // const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
-            jobs.push(extractColorFromImage(imageBuffer, squareRegion));
-
         }
     }
-
-    const results = await Promise.all(jobs);
-    results.forEach(result => {
-        const [r, g, b] = result;
-
-        if (landMark.targetColor === undefined) {
-            throw new Error(`Malformed LandMarkColorCount: ${JSON.stringify(landMark, null, 2)}`);
-        }
-
-        if (colorDistance(landMark.targetColor, rgbToHex(r,g,b)) <= landMark.threshold) {
-            colorCount++;
-        }
-    })
 
     return {name: landMark.name, text: colorCount.toString()};
 }
 
 async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: Buffer, minX: number, minY: number) {
     // Normalize rects minX/minY (for if frame has been cropped)
-    let region: Region = {...landMark.rect}; // Make a copy of the rect object
+    let region: Region = { ...landMark.rect }; // Make a copy of the rect object
     region.left -= minX;
     region.top -= minY;
+    const originalRegion = { ...region }; // Hold the original
 
-    const squareSize = landMark.pollPixels;
-    const rows = Math.ceil(region.height / squareSize);
-    const cols = Math.ceil(region.width / squareSize);
+    // Calculate new dimensions
+    region.left = Math.ceil(region.left / landMark.pollPixels);
+    region.top = Math.ceil(region.top / landMark.pollPixels);
+    region.width = Math.ceil(region.width / landMark.pollPixels);
+    region.height = Math.ceil(region.height / landMark.pollPixels);
 
-    let jobs = []
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            let squareRegion: Region = {
-                left: region.left + col * squareSize,
-                top: region.top + row * squareSize,
-                width: squareSize,
-                height: squareSize
-            };
+    const resizedWidth = region.width;
+    const resizedHeight = region.height;
 
-            // Ensure the region doesn't go out of the image bounds
-            if (squareRegion.left + squareRegion.width > region.left + region.width) {
-                squareRegion.width = region.left + region.width - squareRegion.left;
-            }
-            if (squareRegion.top + squareRegion.height > region.top + region.height) {
-                squareRegion.height = region.top + region.height - squareRegion.top;
-            }
+    /**
+     * TODO debug Save the resized image buffer to disk for debugging
+     *
+    const debug = await sharp(imageBuffer)
+        .extract(originalRegion) // Extract the original region first
+        .resize({ width: resizedWidth, height: resizedHeight }) // Resize to poll size
+        .toBuffer();
+    writeFileSync(`.debug/resized_${landMark.name}.png`, debug, {flag: 'w'});
+    /**************************************************
+     */
 
-            // const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
-            jobs.push(extractColorFromImage(imageBuffer, squareRegion));
+    // Resize the entire image
+    const resizedImageBuffer = await sharp(imageBuffer)
+        .extract(originalRegion) // Extract the original region first
+        .resize({ width: resizedWidth, height: resizedHeight }) // Resize to poll size
+        .raw()
+        .toBuffer();
 
-        }
-    }
-
-    // Prepare the output dict
     let output: {
         [color: string]: number
     } = {...landMark.colorsAndThresholds}
@@ -233,23 +224,29 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
         output[color] = 0;
     }
 
-    const results = await Promise.all(jobs);
+    // Process the resized image pixels
+    for (let row = 0; row < resizedHeight; row++) {
+        for (let col = 0; col < resizedWidth; col++) {
+            const pixelIndex = (row * resizedWidth + col) * 3;
+            const r = resizedImageBuffer[pixelIndex];
+            const g = resizedImageBuffer[pixelIndex + 1];
+            const b = resizedImageBuffer[pixelIndex + 2];
 
-    results.forEach(result => {
-        const [r, g, b] = result;
+            const pixelColor = rgbToHex(r, g, b);
 
-        for (const color in landMark.colorsAndThresholds) {
-            const threshold = landMark.colorsAndThresholds[color];
-
-            if (colorDistance(color, rgbToHex(r,g,b)) <= threshold) {
-                output[color]++;
+            for (const [targetColor, threshold] of Object.entries(landMark.colorsAndThresholds)) {
+                if (colorDistance(pixelColor, targetColor, landMark.distanceAlgorithm) <= threshold) {
+                    output[targetColor]++;
+                }
             }
         }
-    })
+    }
 
     return {name: landMark.name, text: JSON.stringify(output)};
 }
 
+// Step allows for spreading recognize jobs out per landmark
+let step = 0;
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const sharpProc = sharp(rawImageBuffer)
@@ -261,7 +258,7 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     const imageBuffer = await sharpProc.toBuffer();
 
     // Save the image buffer to disk TODO Debug
-    // /*
+    /*
     const encodedName = stateModel.constraints.displayName
         .toLowerCase()
         .replace(/\s+/g, '_')
@@ -273,6 +270,11 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     let output = {...stateModel};
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
+        // If this landmark is sleeping (its step is not called yet), return a blank
+        if (step % (landMark.step ? landMark.step : 1) !== 0) {
+            return { name: landMark.name, text: ""};
+        }
+
         switch (landMark.type) {
             case "ocr":
                 return recognizeOCR(landMark, imageBuffer, minX, minY);
@@ -282,6 +284,9 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
                 return recognizeColorCount(landMark, rawImageBuffer, minX, minY);
             case "colorCountA":
                 return recognizeColorCountA(landMark, rawImageBuffer, minX, minY);
+            default:
+                console.error(`Unhandled landmark type!`);
+                return { name: "ERROR", text: "ERROR" };
         }
 
     });
@@ -297,5 +302,6 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         }
     }
 
+    step++;
     return output;
 }
