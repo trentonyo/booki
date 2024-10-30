@@ -13,51 +13,6 @@
   },
   "gameState": [
     {
-      "type": "color",
-      "name": "color_first",
-      "rect": {"left": 120, "top": 84, "width": 10, "height": 10}
-    },
-    {
-      "type": "color",
-      "name": "color_second",
-      "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
-    },
-    {
-      "type": "color",
-      "name": "color_third",
-      "rect": {"left": 120, "top": 192, "width": 10, "height": 10}
-    },
-    {
-      "type": "colorCountA",
-      "name": "captureProgress_first",
-      "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
-      "pollPixels": 12,
-      "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
-      }
-    },
-    {
-      "type": "colorCountA",
-      "name": "captureProgress_second",
-      "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
-      "pollPixels": 12,
-      "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
-      }
-    },
-    {
-      "type": "colorCountA",
-      "name": "captureProgress_third",
-      "rect": {"left": 170, "top": 222, "width": 200, "height": 48},
-      "pollPixels": 12,
-      "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
-      }
-    },
-    {
       "type":  "ocr",
       "name": "score_firstCash",
       "rect": {"left": 170, "top": 82, "width": 240, "height": 55},
