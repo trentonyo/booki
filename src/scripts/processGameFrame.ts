@@ -1,6 +1,6 @@
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
-import {colorDistance, rgbToHex} from "./colorUtil";
+import {colorDistance, divideIntoRegions, rgbToHex} from "./colorUtil";
 import {getOCRWorkerPool} from "./workOCR";
 
 async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
@@ -145,36 +145,17 @@ async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Bu
     region.left -= minX;
     region.top -= minY;
 
-    const squareSize = landMark.pollPixels;
-    const rows = Math.ceil(region.height / squareSize);
-    const cols = Math.ceil(region.width / squareSize);
-
+    let jobs: Promise<Buffer>[] = []
     let colorCount = 0;
 
-    let jobs = []
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            let squareRegion: Region = {
-                left: region.left + col * squareSize,
-                top: region.top + row * squareSize,
-                width: squareSize,
-                height: squareSize
-            };
+    // Buck image up into regions
+    const squareSize = landMark.pollPixels;
+    const regions = divideIntoRegions(region, squareSize);
+    regions.forEach(squareRegion => {
+        jobs.push(extractColorFromImage(imageBuffer, squareRegion));
+    })
 
-            // Ensure the region doesn't go out of the image bounds
-            if (squareRegion.left + squareRegion.width > region.left + region.width) {
-                squareRegion.width = region.left + region.width - squareRegion.left;
-            }
-            if (squareRegion.top + squareRegion.height > region.top + region.height) {
-                squareRegion.height = region.top + region.height - squareRegion.top;
-            }
-
-            // const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
-            jobs.push(extractColorFromImage(imageBuffer, squareRegion));
-
-        }
-    }
-
+    // Compare regions' colors
     const results = await Promise.all(jobs);
     results.forEach(result => {
         const [r, g, b] = result;
@@ -197,33 +178,14 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     region.left -= minX;
     region.top -= minY;
 
+    let jobs: Promise<Buffer>[] = []
+
+    // Buck image up into regions
     const squareSize = landMark.pollPixels;
-    const rows = Math.ceil(region.height / squareSize);
-    const cols = Math.ceil(region.width / squareSize);
-
-    let jobs = []
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            let squareRegion: Region = {
-                left: region.left + col * squareSize,
-                top: region.top + row * squareSize,
-                width: squareSize,
-                height: squareSize
-            };
-
-            // Ensure the region doesn't go out of the image bounds
-            if (squareRegion.left + squareRegion.width > region.left + region.width) {
-                squareRegion.width = region.left + region.width - squareRegion.left;
-            }
-            if (squareRegion.top + squareRegion.height > region.top + region.height) {
-                squareRegion.height = region.top + region.height - squareRegion.top;
-            }
-
-            // const [r, g, b] = await extractColorFromImage(imageBuffer, squareRegion);
-            jobs.push(extractColorFromImage(imageBuffer, squareRegion));
-
-        }
-    }
+    const regions = divideIntoRegions(region, squareSize);
+    regions.forEach(squareRegion => {
+        jobs.push(extractColorFromImage(imageBuffer, squareRegion));
+    })
 
     // Prepare the output dict
     let output: {

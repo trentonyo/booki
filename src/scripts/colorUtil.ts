@@ -1,3 +1,35 @@
+import { Region } from "sharp";
+
+// New function to divide region into smaller sub-regions
+export function divideIntoRegions(region: Region, pollPixels: number): Region[] {
+    const squareSize = pollPixels;
+    const rows = Math.ceil(region.height / squareSize);
+    const cols = Math.ceil(region.width / squareSize);
+
+    let regions: Region[] = [];
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            let squareRegion: Region = {
+                left: region.left + col * squareSize,
+                top: region.top + row * squareSize,
+                width: squareSize,
+                height: squareSize
+            };
+
+            // Ensure the region doesn't go out of the image bounds
+            if (squareRegion.left + squareRegion.width > region.left + region.width) {
+                squareRegion.width = region.left + region.width - squareRegion.left;
+            }
+            if (squareRegion.top + squareRegion.height > region.top + region.height) {
+                squareRegion.height = region.top + region.height - squareRegion.top;
+            }
+
+            regions.push(squareRegion);
+        }
+    }
+    return regions;
+}
+
 export function hexToRgb(hex: string): { r: number, g: number, b: number } {
     if (!/^#[0-9A-F]{6}$/i.test(hex)) {
         throw new Error(`Invalid hex color input: ${hex}`);
