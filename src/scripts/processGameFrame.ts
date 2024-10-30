@@ -20,11 +20,15 @@ type Rectangle = {
     height: number;
 };
 
-// Define the LandMarkOCR type
-export type LandMarkOCR = {
-    type: "ocr";
+type LandMarkCommon = {
     name: string;
     rect: Rectangle;
+    step?: number; // Defines how many steps of processing must pass before this landmark is read (default 1)
+};
+
+// Define the LandMarkOCR type
+export type LandMarkOCR = LandMarkCommon & {
+    type: "ocr";
     radians?: number; // rotation is optional
     charMask?: string; // charMask is optional
     validRegex?: string; // validRegex is optional
@@ -32,20 +36,16 @@ export type LandMarkOCR = {
 };
 
 // Define the LandMarkColor type
-export type LandMarkColor = {
+export type LandMarkColor = LandMarkCommon & {
     type: "color";
-    name: string;
-    rect: Rectangle;
     distanceAlgorithm?: distanceAlgorithms;
     threshold?: number; // un-restricted number for use with specialized scripts
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
 
 // Define the LandMarkColorCount type
-export type LandMarkColorCount = {
+export type LandMarkColorCount = LandMarkCommon & {
     type: "colorCount";
-    name: string;
-    rect: Rectangle;
     pollPixels: number;
     targetColor: string;
     distanceAlgorithm?: distanceAlgorithms;
@@ -58,10 +58,8 @@ export type ColorsAndThresholds = {
     [color: string]: number
 };
 
-export type LandMarkColorCountA = {
+export type LandMarkColorCountA = LandMarkCommon & {
     type: "colorCountA";
-    name: string;
-    rect: Rectangle;
     pollPixels: number;
     distanceAlgorithm?: distanceAlgorithms;
     colorsAndThresholds: ColorsAndThresholds;
@@ -247,6 +245,8 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     return {name: landMark.name, text: JSON.stringify(output)};
 }
 
+// Step allows for spreading recognize jobs out per landmark
+let step = 0;
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const sharpProc = sharp(rawImageBuffer)
@@ -270,6 +270,11 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     let output = {...stateModel};
 
     const recognizePromises = stateModel.gameState.map(async (landMark) => {
+        // If this landmark is sleeping (its step is not called yet), return a blank
+        if (step % (landMark.step ? landMark.step : 1) !== 0) {
+            return { name: landMark.name, text: ""};
+        }
+
         switch (landMark.type) {
             case "ocr":
                 return recognizeOCR(landMark, imageBuffer, minX, minY);
@@ -297,5 +302,6 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         }
     }
 
+    step++;
     return output;
 }

@@ -79,6 +79,7 @@
     {
       "type": "ocr",
       "name": "score_firstCash",
+      "step": 6,
       "rect": {"left": 170, "top": 82, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
@@ -86,6 +87,7 @@
     {
       "type":  "ocr",
       "name": "score_secondCash",
+      "step": 6,
       "rect": {"left": 170, "top": 137, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
@@ -93,6 +95,7 @@
     {
       "type":  "ocr",
       "name": "score_thirdCash",
+      "step": 6,
       "rect": {"left": 170, "top": 238, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
@@ -100,6 +103,7 @@
     {
       "type":  "ocr",
       "name": "score_fourthCash",
+      "step": 6,
       "rect": {"left": 170, "top": 291, "width": 240, "height": 55},
       "charMask": "$+1234567890",
       "validRegex": "^\\$\\d+(\\+\\$[12][025]000)?$"
@@ -107,6 +111,7 @@
     {
       "type":  "ocr",
       "name": "game_timeRemaining",
+      "step": 6,
       "rect": {"left": 1227, "top": 64, "width": 105, "height": 120},
       "charMask": ":+1234567890",
       "validRegex": "^[1-2]?\\d:\\d\\d(\\n\\+\\d?\\d:[0-5]\\d)?$"
