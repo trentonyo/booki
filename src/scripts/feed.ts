@@ -131,7 +131,4 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     }
 
     captureFrame();
-    console.log(`PROGRESS  Diff expected: #FFEC00 vs actual: #F8EB02 - ${colorDistance("#CEC821", "#F8EB02")}`);
-    console.log(`REMAINING Diff expected: #4A5d11 vs actual: #A4900C - ${colorDistance("#877E0A", "#A4900C")}`);
-    console.log(`REMAINING Diff expected: #4A5d11 vs BNOISE: #574F00 - ${colorDistance("#877E0A", "#574F00")}`);
 }

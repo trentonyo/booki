@@ -1,6 +1,6 @@
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
-import {colorDistance, divideIntoRegions, rgbToHex} from "./colorUtil";
+import {colorDistance, distanceAlgorithms, divideIntoRegions, rgbToHex} from "./colorUtil";
 import {getOCRWorkerPool} from "./workOCR";
 
 async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
@@ -36,6 +36,7 @@ export type LandMarkColor = {
     type: "color";
     name: string;
     rect: Rectangle;
+    distanceAlgorithm?: distanceAlgorithms;
     threshold?: number; // un-restricted number for use with specialized scripts
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
@@ -47,6 +48,7 @@ export type LandMarkColorCount = {
     rect: Rectangle;
     pollPixels: number;
     targetColor: string;
+    distanceAlgorithm?: distanceAlgorithms;
     threshold: number;
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
@@ -61,6 +63,7 @@ export type LandMarkColorCountA = {
     name: string;
     rect: Rectangle;
     pollPixels: number;
+    distanceAlgorithm?: distanceAlgorithms;
     colorsAndThresholds: ColorsAndThresholds;
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR
 };
@@ -173,7 +176,7 @@ async function recognizeColorCount(landMark: LandMarkColorCount, imageBuffer: Bu
             const b = resizedImageBuffer[pixelIndex + 2];
 
             const pixelColor = rgbToHex(r, g, b);
-            if (colorDistance(pixelColor, landMark.targetColor) <= landMark.threshold) {
+            if (colorDistance(pixelColor, landMark.targetColor, landMark.distanceAlgorithm) <= landMark.threshold) {
                 colorCount++;
             }
         }
@@ -200,7 +203,7 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
 
     /**
      * TODO degug Save the resized image buffer to disk for debugging
-     */
+     *
     const debug = await sharp(imageBuffer)
         .extract(originalRegion) // Extract the original region first
         .resize({ width: resizedWidth, height: resizedHeight }) // Resize to poll size
@@ -233,14 +236,8 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
 
             const pixelColor = rgbToHex(r, g, b);
 
-            // Skip if pixelColor is not a valid hexadecimal color code
-            // if (!/^#[0-9A-F]{6}$/i.test(pixelColor)) {
-            //     console.warn(`Invalid color code [landmark: ${landMark.name}, {r: ${r} g: ${g} b: ${b}]: ${pixelColor}`);
-            //     continue;
-            // }
-
             for (const [targetColor, threshold] of Object.entries(landMark.colorsAndThresholds)) {
-                if (colorDistance(pixelColor, targetColor) <= threshold) {
+                if (colorDistance(pixelColor, targetColor, landMark.distanceAlgorithm) <= threshold) {
                     output[targetColor]++;
                 }
             }
