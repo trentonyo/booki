@@ -1,9 +1,11 @@
 import {ColorsAndThresholds, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
-import {DraggingConsensus} from "../stateHandlerUtil";
+import {DraggingAverage, DraggingConsensus} from "../stateHandlerUtil";
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
+
+type Ranks = "first" | "second" | "third" | "fourth";
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000],
@@ -12,22 +14,31 @@ const RULES = {
 }
 
 class Team {
-    private cash: number = 0;
+    public depositDraggingAverage;
+    public cash: number = 0;
+
     private depositControlled: number = -1;
 
-    constructor(protected color: string, public name: string) {}
+    constructor(protected color: string, public name: string, public rank: Ranks) {
+        this.depositDraggingAverage = new DraggingAverage();
+    }
 
     get getColor() {
         return this.color;
     }
 }
 
-const myTeam = new Team("#02b9f1", "Our Team")
-const pinkTeam = new Team("#f902df", "Pink Team")
-const orangeTeam = new Team("#ff930e", "Orange Team")
-const purpleTeam = new Team("#b551ff", "Purple Team")
+const myTeam = new Team("#02b9f1", "Our Team", "first")
+const pinkTeam = new Team("#f902df", "Pink Team", "second")
+const orangeTeam = new Team("#ff930e", "Orange Team", "third")
+const purpleTeam = new Team("#b551ff", "Purple Team", "fourth")
 
 const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
+
+const tmp_FirstDraggingCapture = new DraggingAverage();
+const tmp_SecondDraggingCapture = new DraggingAverage();
+const tmp_ThirdDraggingCapture = new DraggingAverage();
+const tmp_FourthDraggingCapture = new DraggingAverage();
 
 function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: Team, index: number } {
     let teamToPop = 0;
@@ -77,15 +88,19 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         switch (i) {
             case 0:
                 target = document.getElementById("color_first")
+                team.rank = "first";
                 break;
             case 1:
                 target = document.getElementById("color_second")
+                team.rank = "second";
                 break;
             case 2:
                 target = document.getElementById("color_third")
+                team.rank = "third";
                 break;
             case 3:
                 target = document.getElementById("color_fourth")
+                team.rank = "fourth";
                 break;
         }
 
@@ -109,14 +124,35 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
             const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
 
+            let signal = "--"
             // Should filter out random pops of color
             if (progress + remaining > 5) {
 
                 const percent = ((progress / (progress + remaining)) * 100);
-                readOut.innerText = isNaN(percent) ? "--" : `${percent.toFixed()}%` // TODO replace with a dragging average
-            } else {
-                readOut.innerText = "--";
+
+                let tmpDA: DraggingAverage;
+                switch (captureGroup) {
+                    case "first":
+                        tmpDA = tmp_FirstDraggingCapture;
+                        break;
+                    case "second":
+                        tmpDA = tmp_SecondDraggingCapture;
+                        break;
+                    case "third":
+                        tmpDA = tmp_ThirdDraggingCapture;
+                        break;
+                    case "fourth":
+                        tmpDA = tmp_FourthDraggingCapture;
+                        break;
+                }
+
+                if (!isNaN(percent)) {
+                    signal = `${percent.toFixed()}%`
+                    console.log(`${captureGroup} avg: ${tmpDA!.average(percent)}`) // TODO the zeroes are important
+                }
             }
+
+            readOut.innerText = signal;
 
         } catch (e) {}
     })

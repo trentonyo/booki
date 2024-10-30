@@ -1,6 +1,22 @@
 
 export class DraggingAverage {
+    private history: number[];
+    private draggingHistoryLimit: number;
+    private trendLimit: number;
 
+    constructor(draggingHistoryLimit: number = 10, trendLimit: number = 5) {
+        this.history = [];
+        this.draggingHistoryLimit = draggingHistoryLimit;
+        this.trendLimit = trendLimit;
+    }
+
+    public average(value: number): number {
+        this.history.push(value);
+
+        const recentHistory = this.history.slice(-this.draggingHistoryLimit);
+        const sum = recentHistory.reduce((acc, val) => acc + val, 0);
+        return recentHistory.length > 0 ? sum / recentHistory.length : 0;
+    }
 }
 
 export class DraggingConsensus<T> {
