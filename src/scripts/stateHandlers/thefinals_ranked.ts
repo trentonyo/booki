@@ -1,13 +1,6 @@
-import {
-    ColorsAndThresholds,
-    LandMarkColorCount,
-    LandMarkColorCountA,
-    LandMarkOCR,
-    StateModel
-} from "../processGameFrame";
+import {ColorsAndThresholds, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
-import {Simulate} from "react-dom/test-utils";
-import progress = Simulate.progress;
+import {DraggingConsensus} from "../stateHandlerUtil";
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
@@ -34,6 +27,8 @@ const pinkTeam = new Team("#f902df", "Pink Team")
 const orangeTeam = new Team("#ff930e", "Orange Team")
 const purpleTeam = new Team("#b551ff", "Purple Team")
 
+const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
+
 function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: Team, index: number } {
     let teamToPop = 0;
     let closestDistance = 256;
@@ -49,84 +44,6 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
     return { closestTeam: teams[teamToPop], index: teamToPop };
 }
 
-let consensus_lastStableStandings: Team[];
-/**
- * Computes a consensus value based on a rolling history of inputs.
- * Maintains a history of previous values up to a specified limit, computes the mode
- * of the history, and handles noise by checking frequency thresholds.
- *
- * @param nextValue - The next input value to consider in the consensus calculation
- * @param history - An array holding the history of values for rolling consensus calculation
- * @param historyLimit - The maximum number of historical values to maintain
- * @param lowNoiseLimit - The maxFrequency threshold below which historical noise is considered high, a highly stable historical value should be returned in this case
- * @param highStabilityLimit - The maxFrequency threshold above which a mode is considered highly stable
- * @return The consensus value based on historical frequency analysis or the next input value if no mode is found
- */
-function consensus<T>(nextValue: T, history: T[], historyLimit: number, lowNoiseLimit: number, highStabilityLimit: number): {value: T, frequency: number} {
-    // Keep the rolling history
-    history.push(nextValue)
-    
-    if (history.length > historyLimit) {
-        history.shift();
-    }
-    
-    // Calculate the mode
-    const frequency = new Map<string, number>();
-
-    history.forEach((value) => {
-        const hashed = JSON.stringify(value);
-
-        frequency.set(hashed, (frequency.get(hashed) || 0) + 1)
-    });
-
-    let mode: T | null = null;
-    let maxFrequency = 0;
-    for (const [value, count] of frequency) {
-        if (count > maxFrequency) {
-            maxFrequency = count;
-            mode = JSON.parse(value) as T;
-        }
-    }
-
-    /// Update stable consensus
-    if (maxFrequency > highStabilityLimit) {
-        // Team consensus
-        if ((nextValue as any) instanceof Array && (nextValue as any)[0] instanceof Team) {
-            consensus_lastStableStandings = mode as Team[];
-        }
-    }
-
-    /// Filter noisy history
-    // Team consensus
-    if (consensus_lastStableStandings !== undefined && history.length > lowNoiseLimit && maxFrequency < lowNoiseLimit) {
-        console.warn("Low noise detected, returning last stable value and flushing buffer");
-        history.length = 0;
-        history.push(nextValue);
-
-        // Team consensus
-        if ((nextValue as any) instanceof Array && (nextValue as any)[0] instanceof Team) {
-            return {
-                value: consensus_lastStableStandings as T,
-                frequency: maxFrequency
-            }
-        }
-    }
-
-    let output = {
-        value: nextValue,
-        frequency: -1
-    }
-
-    if (mode) {
-        output = {
-            value: mode,
-            frequency: maxFrequency
-        }
-    }
-    return output;
-}
-
-let history_sortedTeams: Team[][] = []
 export default function handleProcessedGameState(processedGameState: StateModel) {
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
@@ -150,10 +67,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     });
     sortedTeams.push(remainingTeams[0]);
 
-    const consensusTeams = consensus(sortedTeams, history_sortedTeams, 15, 5, 10)
+    const consensusTeams = TeamDraggingConsensus.consensus(sortedTeams)
     const c = consensusTeams.value || sortedTeams
-
-    // console.log(`[${consensusTeams.frequency || -100}] FIRST: ${c[0].name}    | SECOND: ${c[1].name}    | THIRD: ${c[2].name}    | LAST: ${c[3].name}`);
 
     for (let i = 0; i < c.length; i++) {
         const team = c[i];
