@@ -36,7 +36,7 @@
       "type": "colorCountA",
       "name": "captureProgress_first",
       "rect": {"left": 170, "top": 118, "width": 360, "height": 48},
-      "pollPixels": 6,
+      "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
         "#CEC821": 10,
@@ -47,7 +47,7 @@
       "type": "colorCountA",
       "name": "captureProgress_second",
       "rect": {"left": 170, "top": 170, "width": 360, "height": 48},
-      "pollPixels": 6,
+      "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
         "#CEC821": 10,
@@ -58,7 +58,7 @@
       "type": "colorCountA",
       "name": "captureProgress_third",
       "rect": {"left": 170, "top": 274, "width": 360, "height": 48},
-      "pollPixels": 6,
+      "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
         "#CEC821": 10,
@@ -69,7 +69,7 @@
       "type": "colorCountA",
       "name": "captureProgress_fourth",
       "rect": {"left": 170, "top": 327, "width": 360, "height": 48},
-      "pollPixels": 6,
+      "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
         "#CEC821": 10,

@@ -202,8 +202,8 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     const resizedHeight = region.height;
 
     /**
-     * TODO degug Save the resized image buffer to disk for debugging
-     *
+     * TODO debug Save the resized image buffer to disk for debugging
+     */
     const debug = await sharp(imageBuffer)
         .extract(originalRegion) // Extract the original region first
         .resize({ width: resizedWidth, height: resizedHeight }) // Resize to poll size
