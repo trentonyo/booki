@@ -48,6 +48,16 @@ export function rgbToHex(r: number, g: number, b: number): string {
 }
 
 export function colorDistance(color1: string, color2: string): number {
+    // Validate color1
+    if (!/^#[0-9A-F]{6}$/i.test(color1)) {
+        throw new Error(`Invalid hex color input for color1: ${color1}`);
+    }
+
+    // Validate color2
+    if (!/^#[0-9A-F]{6}$/i.test(color2)) {
+        throw new Error(`Invalid hex color input for color2: ${color2}`);
+    }
+    
     const rgb1 = hexToRgb(color1);
     const rgb2 = hexToRgb(color2);
     const rDiff = rgb1.r - rgb2.r;

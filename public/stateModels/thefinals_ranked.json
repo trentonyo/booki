@@ -35,41 +35,41 @@
     {
       "type": "colorCountA",
       "name": "captureProgress_first",
-      "rect": {"left": 170, "top": 118, "width": 200, "height": 48},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 118, "width": 360, "height": 48},
+      "pollPixels": 6,
       "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
+        "#CEC821": 20,
+        "#877E0A": 20
       }
     },
     {
       "type": "colorCountA",
       "name": "captureProgress_second",
-      "rect": {"left": 170, "top": 170, "width": 200, "height": 48},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 170, "width": 360, "height": 48},
+      "pollPixels": 6,
       "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
+        "#CEC821": 20,
+        "#877E0A": 20
       }
     },
     {
       "type": "colorCountA",
       "name": "captureProgress_third",
-      "rect": {"left": 170, "top": 274, "width": 200, "height": 48},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 274, "width": 360, "height": 48},
+      "pollPixels": 6,
       "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
+        "#CEC821": 20,
+        "#877E0A": 20
       }
     },
     {
       "type": "colorCountA",
       "name": "captureProgress_fourth",
-      "rect": {"left": 170, "top": 327, "width": 200, "height": 48},
-      "pollPixels": 12,
+      "rect": {"left": 170, "top": 327, "width": 360, "height": 48},
+      "pollPixels": 6,
       "colorsAndThresholds": {
-        "#FEE502": 45,
-        "#B0B000": 45
+        "#CEC821": 20,
+        "#877E0A": 20
       }
     },
     {

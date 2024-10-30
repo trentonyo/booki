@@ -189,8 +189,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
             const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
 
-            const progress = response["#FEE502"]
-            const remaining = response["#B0B000"]
+            const progress = response["#FFAC13"]
+            const remaining = response["#4A5d11"]
 
             const percent = ((progress / (progress + remaining)) * 100);
 

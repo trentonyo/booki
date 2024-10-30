@@ -1,5 +1,6 @@
 import {StateModel, LandMarkOCR} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
+import {colorDistance} from "./colorUtil";
 
 //  IMPORTANT! See /server.ts for stateModels
 const handlers: { [modelName: string]: (processedGameState: StateModel) => void } = {
@@ -67,7 +68,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
 
         // Draw bounding boxes for each landmark TODO Debug
-        // /*
+        /*
         ctx!.strokeStyle = "#ff0059"
         for (const debugRect of debugRects) {
             ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);
@@ -130,4 +131,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     }
 
     captureFrame();
+    console.log(`PROGRESS  Diff expected: #FFEC00 vs actual: #F8EB02 - ${colorDistance("#CEC821", "#F8EB02")}`);
+    console.log(`REMAINING Diff expected: #4A5d11 vs actual: #A4900C - ${colorDistance("#877E0A", "#A4900C")}`);
+    console.log(`REMAINING Diff expected: #4A5d11 vs BNOISE: #574F00 - ${colorDistance("#877E0A", "#574F00")}`);
 }
