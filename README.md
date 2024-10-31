@@ -14,7 +14,7 @@ The platform takes periodic images from your screen and runs them through a
 highly performant image recognition processor against light data validation
 defined for any given game**.
 
-_* Have not tested yet today (10/29/2024), the color counting may have tanked performance._
+_* Tested (10/31/2024) with THE FINALS, no dropped frames at medium graphics._
 
 _** Specialized scripts use the game's logic/rules to clean up noisy data and predict win probability over the 
 course of the game, while it's being played._
