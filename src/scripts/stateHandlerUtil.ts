@@ -1,4 +1,3 @@
-
 export class DraggingAverage {
     private history: number[];
     private draggingHistoryLimit: number;
@@ -20,6 +19,7 @@ export class DraggingAverage {
 }
 
 export class DraggingConsensus<T> {
+    public stable: boolean = false;
     public lastStable: T;
     private history: T[];
 
@@ -66,6 +66,7 @@ export class DraggingConsensus<T> {
         /// Update stable consensus
         if (maxFrequency > this.highStabilityLimit) {
             this.lastStable = mode as T;
+            this.stable = true;
         }
 
         /// Filter noisy history
@@ -74,6 +75,7 @@ export class DraggingConsensus<T> {
             console.warn("Low noise detected, returning last stable value and flushing buffer");
             this.history.length = 0;
             this.history.push(nextValue);
+            this.stable = false;
 
             // Team consensus
             return {
@@ -94,5 +96,47 @@ export class DraggingConsensus<T> {
             }
         }
         return output;
+    }
+
+    public flush() {
+        this.history.length = 0;
+    }
+
+    public stableConsensus(nextValue: T) {
+        const p = this.consensus(nextValue);
+        return this.stable ? p : null;
+    }
+}
+
+export class SuggestTimer {
+    public stable = false;
+    protected startedAt: number;
+
+    constructor(protected duration: number, private suggestionThreshold: number = 10) {
+        // Start the timer
+        this.startedAt = Math.round(Date.now() / 1000);
+    }
+
+    public suggest(remainingSecondsSuggestion: number) {
+        if (!this.stable) {
+            const diff = remainingSecondsSuggestion - this.remaining;
+
+            // If the timer is dead on, set stable to true
+            if (diff === 0) {
+                this.stable = true;
+            }
+            // Else, adjust timer to seconds
+            else if (Math.abs(diff) < this.suggestionThreshold) {
+                this.startedAt += diff;
+            }
+        }
+    }
+
+    public get remaining() {
+        return this.duration - (Math.round(Date.now() / 1000) - this.startedAt);
+    }
+
+    public adjustStart(addend: number) {
+        this.startedAt += addend;
     }
 }

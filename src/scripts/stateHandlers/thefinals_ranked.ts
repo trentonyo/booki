@@ -1,6 +1,6 @@
 import {ColorsAndThresholds, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
-import {DraggingAverage, DraggingConsensus} from "../stateHandlerUtil";
+import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
@@ -13,6 +13,10 @@ const RULES = {
     accumulateCashAmounts: [500, 3000, 5000, 7000],
     teamKillPenalty: 0.9,
     lengthOfGame: 9 * 60
+}
+
+const SETTINGS = {
+    timerAdjustment: -1
 }
 
 let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
@@ -80,6 +84,13 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
     return { closestTeam: teams[teamToPop], index: teamToPop };
 }
 
+const newCashOutStarted = new DraggingConsensus(false, 10, 2, 6);
+const gameTimer = new SuggestTimer(RULES.lengthOfGame, 60);
+let gameTimerSynchronized = false;
+
+const overTimeConsensus = new DraggingConsensus(0, 20, 1, 6)
+let overTimeApplied = false;
+
 export default function handleProcessedGameState(processedGameState: StateModel) {
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
@@ -137,6 +148,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
      * Track the current deposits
      */
     const captureGroups = ["first", "second", "third", "fourth"];
+    let teamsCapturing: string[] = []
 
     captureGroups.forEach(captureGroup => {
         try {
@@ -176,6 +188,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             if (progress + remaining > 5 && !isNaN(percent)) {
                 // Filtering out ~100% reads, they seem to be noise
                 a = tmpDA!.average(percent >= 99 ? 0 : percent);
+
+                teamsCapturing.push(captureGroup);
             } else {
                 a = tmpDA!.average(0);
             }
@@ -185,6 +199,10 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         } catch (e) {}
     })
 
+    if (newCashOutStarted.consensus(teamsCapturing.length > 0)) {
+        // console.log("New cashout started! By...", teamsCapturing)
+    }
+
     /**
      * Track the game timer
      */
@@ -192,7 +210,44 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const gameTimeRemainingLandmark = processedGameState.gameState.find(landmark => landmark.name === "game_timeRemaining") as LandMarkOCR;
 
     if (gameTimeRemainingLandmark!.VALUE) {
-        gameTime.innerText = gameTimeRemainingLandmark!.VALUE;
+        if (!gameTimerSynchronized) {
+            const [minS, secS] = gameTimeRemainingLandmark!.VALUE.split(":", 2);
+            const minutes = parseInt(minS, 10);
+            const seconds = parseInt(secS, 10);
+            const totalSeconds = minutes * 60 + seconds;
+            const remainingTime = totalSeconds > RULES.lengthOfGame ? RULES.lengthOfGame : totalSeconds;
+
+            // Use TimerSuggest
+            gameTimer.suggest(remainingTime)
+        }
+        else if (!overTimeApplied)
+        {
+            const overTimeStrings = gameTimeRemainingLandmark!.VALUE.split("+", 2);
+
+            if (overTimeStrings.length === 2) {
+                const [minS, secS] = overTimeStrings[1].split(":", 2);
+                const minutes = parseInt(minS, 10);
+                const seconds = parseInt(secS, 10);
+                const overTimeSeconds = minutes * 60 + seconds;
+
+                const addendOverTime = overTimeConsensus.stableConsensus(overTimeSeconds)
+
+                if (addendOverTime) {
+                    console.log(`Detected overtime, adding ${addendOverTime.value}s`)
+                    overTimeApplied = true;
+                    gameTimer.adjustStart(addendOverTime.value);
+                }
+            }
+        }
+    }
+
+    const t = gameTimer.remaining
+    gameTime.innerText = `${Math.floor(t / 60)}:${t % 60 < 10 ? '0' : ''}${t % 60}`;
+
+    if (gameTimer.stable && !gameTimerSynchronized) {
+        gameTimerSynchronized = true;
+        gameTimer.adjustStart(SETTINGS.timerAdjustment)
+        console.log("Game Time synchronized")
     }
 
     /**
