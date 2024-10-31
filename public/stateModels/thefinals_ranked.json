@@ -34,8 +34,8 @@
     },
     {
       "type": "colorCountA",
-      "name": "captureProgress_first",
-      "rect": {"left": 170, "top": 118, "width": 360, "height": 48},
+      "name": "captureProgress1_first",
+      "rect": {"left": 170, "top": 118, "width": 120, "height": 24},
       "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
@@ -45,8 +45,10 @@
     },
     {
       "type": "colorCountA",
-      "name": "captureProgress_second",
-      "rect": {"left": 170, "top": 170, "width": 360, "height": 48},
+      "name": "captureProgress2_first",
+      "rect": {
+        "left": 290, "top": 128, "width": 120, "height": 24
+      },
       "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
@@ -56,8 +58,8 @@
     },
     {
       "type": "colorCountA",
-      "name": "captureProgress_third",
-      "rect": {"left": 170, "top": 274, "width": 360, "height": 48},
+      "name": "captureProgress3_first",
+      "rect": {"left": 410, "top": 138, "width": 120, "height": 24},
       "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {
@@ -67,8 +69,96 @@
     },
     {
       "type": "colorCountA",
-      "name": "captureProgress_fourth",
-      "rect": {"left": 170, "top": 327, "width": 360, "height": 48},
+      "name": "captureProgress1_second",
+      "rect": {"left": 170, "top": 170, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress2_second",
+      "rect": {"left": 290, "top": 180, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress3_second",
+      "rect": {"left": 410, "top": 190, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress1_third",
+      "rect": {"left": 170, "top": 274, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress2_third",
+      "rect": {"left": 290, "top": 284, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress3_third",
+      "rect": {"left": 410, "top": 294, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress1_fourth",
+      "rect": {"left": 170, "top": 327, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress2_fourth",
+      "rect": {"left": 290, "top": 337, "width": 120, "height": 24},
+      "pollPixels": 4,
+      "distanceAlgorithm": "2000",
+      "colorsAndThresholds": {
+        "#CEC821": 10,
+        "#877E0A": 10
+      }
+    },
+    {
+      "type": "colorCountA",
+      "name": "captureProgress3_fourth",
+      "rect": {"left": 410, "top": 347, "width": 120, "height": 24},
       "pollPixels": 4,
       "distanceAlgorithm": "2000",
       "colorsAndThresholds": {

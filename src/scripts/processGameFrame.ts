@@ -258,7 +258,7 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     const imageBuffer = await sharpProc.toBuffer();
 
     // Save the image buffer to disk TODO Debug
-    /*
+    // /*
     const encodedName = stateModel.constraints.displayName
         .toLowerCase()
         .replace(/\s+/g, '_')

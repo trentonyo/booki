@@ -6,25 +6,50 @@ const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
 
 type Ranks = "first" | "second" | "third" | "fourth";
+type DepositDenominations = 7000 | 10000 | 15000;
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000],
     accumulateCashAmounts: [500, 3000, 5000, 7000],
-    teamKillPenalty: 0.9
+    teamKillPenalty: 0.9,
+    lengthOfGame: 9 * 60
 }
 
+let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
+
 class Team {
-    public depositDraggingAverage;
     public cash: number = 0;
 
-    private depositControlled: number = -1;
-
     constructor(protected color: string, public name: string, public rank: Ranks) {
-        this.depositDraggingAverage = new DraggingAverage();
+
     }
 
     get getColor() {
         return this.color;
+    }
+}
+
+class Deposit {
+    private readonly duration: number;
+    constructor(public value: DepositDenominations, protected timeRemainingAtStart: number, controllingTeam: Team | null = null) {
+        const t = timeRemainingAtStart;
+
+        if (t < 1) {
+            this.duration = 60;
+        } else
+        if (t <= 30) {
+            this.duration = 90;
+        } else
+        if (t <= 60) {
+            this.duration = 120;
+        }
+        else {
+            this.duration = 130;
+        }
+    }
+
+    public remainingSeconds() {
+        return this.timeRemainingAtStart - this.duration;
     }
 }
 
@@ -115,44 +140,47 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
     captureGroups.forEach(captureGroup => {
         try {
-            const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCountA;
+            let progress = 0;
+            let remaining = 0;
 
-            const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
+            for (let i = 1; i <= 3; i++) {
+                const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress${i}_${captureGroup}`)! as LandMarkColorCountA;
 
-            const progress = response["#CEC821"]
-            const remaining = response["#877E0A"]
+                const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
 
-            const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
+                progress += response["#CEC821"]
+                remaining += response["#877E0A"]
+            }
+            const readOut = document.getElementById(`captureProgress1_${captureGroup}`)!;
 
-            let signal = "--"
-            // Should filter out random pops of color
-            if (progress + remaining > 5) {
-
-                const percent = ((progress / (progress + remaining)) * 100);
-
-                let tmpDA: DraggingAverage;
-                switch (captureGroup) {
-                    case "first":
-                        tmpDA = tmp_FirstDraggingCapture;
-                        break;
-                    case "second":
-                        tmpDA = tmp_SecondDraggingCapture;
-                        break;
-                    case "third":
-                        tmpDA = tmp_ThirdDraggingCapture;
-                        break;
-                    case "fourth":
-                        tmpDA = tmp_FourthDraggingCapture;
-                        break;
-                }
-
-                if (!isNaN(percent)) {
-                    signal = `${percent.toFixed()}%`
-                    console.log(`${captureGroup} avg: ${tmpDA!.average(percent)}`) // TODO the zeroes are important
-                }
+            let tmpDA: DraggingAverage;
+            switch (captureGroup) {
+                case "first":
+                    tmpDA = tmp_FirstDraggingCapture;
+                    break;
+                case "second":
+                    tmpDA = tmp_SecondDraggingCapture;
+                    break;
+                case "third":
+                    tmpDA = tmp_ThirdDraggingCapture;
+                    break;
+                case "fourth":
+                    tmpDA = tmp_FourthDraggingCapture;
+                    break;
             }
 
-            readOut.innerText = signal;
+            const percent = ((progress / (progress + remaining)) * 100);
+            let a;
+
+            // The sum is for filtering out noisy yellow backgrounds
+            if (progress + remaining > 5 && !isNaN(percent)) {
+                // Filtering out ~100% reads, they seem to be noise
+                a = tmpDA!.average(percent >= 99 ? 0 : percent);
+            } else {
+                a = tmpDA!.average(0);
+            }
+
+            readOut.innerText = a.toFixed();
 
         } catch (e) {}
     })
