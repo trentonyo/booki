@@ -23,16 +23,19 @@ export const gameStateModels: StateModelMap = {
     "test": require("../public/stateModels/test.json") as StateModel
 }
 
+function isLandmark(landmark: any): landmark is LandMarkOCR {
+    return landmark.hasOwnProperty('charMask');
+}
+
 function initGameStateModels(workers: number) {
     let allCharMasks: any[] = [];
     for (const gameStateModelsKey in gameStateModels) {
         const gameStateModel = gameStateModels[gameStateModelsKey];
 
         for (const landMark of gameStateModel.gameState) {
-            try {
-                const landMarkOCR = landMark as LandMarkOCR;
-                allCharMasks.push(landMarkOCR.charMask);
-            } catch { }
+            if (isLandmark(landMark)) {
+                allCharMasks.push(landMark.charMask);
+            }
         }
     }
 
@@ -69,6 +72,6 @@ app.get('/feed', (req, res) => {
 });
 
 app.listen(port, () => {
-    initGameStateModels(24);
+    initGameStateModels(12);
     console.log(`OCR service listening at http://${host}:${port}`);
 });
