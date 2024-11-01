@@ -1,4 +1,4 @@
-import {ColorsAndThresholds, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
+import {ColorsAndThresholds, LandMarkColor, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
 
@@ -98,13 +98,13 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const colorRanks = ["color_first", "color_second", "color_third"];
 
     /**
-     * Sort out the ranks of the teams
+     * Sort out the ranks of the teams, and watchdog for respawns
      */
     let remainingTeams = teams;
 
     colorRanks.forEach(rank => {
         const referenceColor = processedGameState.gameState.find(landmark => landmark.name === rank)!.VALUE! as string;
-        // console.warn("=== " + rank + " ===")
+
         const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
         sortedTeams.push(closestTeam);
 
@@ -158,6 +158,17 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
         // TODO can probably use the team color to corroborate a potential team respawn, especially if you move it down a few pixels to the bottom left
         //  instead of the top left
+    })
+
+    sortedTeams.forEach((team) => {
+        // Check if a respawn is likely for this team
+        const rankLandmark = processedGameState.gameState.find(landmark => landmark.name === `color_${team.rank}`)! as LandMarkColor;
+
+        const colorDiff = colorDistance(team.getColor, rankLandmark.VALUE!, "CMC");
+
+        if (colorDiff < 26) {
+            console.log(`Potential Team Respawn: ${team.name} (${team.getColor}) vs ${rankLandmark.VALUE!} (${colorDiff})`);
+        }
     })
 
 

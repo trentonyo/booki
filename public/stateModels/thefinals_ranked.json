@@ -15,22 +15,22 @@
     {
       "type": "color",
       "name": "color_first",
-      "rect": {"left": 120, "top": 84, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 117, "width": 10, "height": 10}
     },
     {
       "type": "color",
       "name": "color_second",
-      "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 169, "width": 10, "height": 10}
     },
     {
       "type": "color",
       "name": "color_third",
-      "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 274, "width": 10, "height": 10}
     },
     {
       "type": "color",
       "name": "color_fourth",
-      "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 324, "width": 10, "height": 10}
     },
     {
       "type": "ocr",
