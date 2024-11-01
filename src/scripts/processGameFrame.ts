@@ -29,7 +29,8 @@ type LandMarkCommon = {
 // Define the LandMarkOCR type
 export type LandMarkOCR = LandMarkCommon & {
     type: "ocr";
-    radians?: number; // rotation is optional
+    useOriginal?: boolean; // if true, will not use any of the image processing for this landmark
+    radians?: number; // rotation is optional AND NOT RECOMMENDED
     charMask?: string; // charMask is optional
     validRegex?: string; // validRegex is optional
     VALUE?: string; // VALUE should only be present when a gameState is returned from OCR  
@@ -114,6 +115,7 @@ async function recognizeOCR(landMark: LandMarkOCR, imageBuffer: Buffer, minX: nu
 
     try {
         const result = await getOCRWorkerPool().addOCRJob(charMask, imageBuffer, options);
+
         return {name: landMark.name, text: result.data.text};
     } catch (error) {
         console.error(`Error processing ${landMark.name}:`, error);
@@ -263,8 +265,19 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         .toLowerCase()
         .replace(/\s+/g, '_')
         .replace(/[^a-z]+/g, '');
-    writeFileSync(`.debug/${encodedName}.png`, imageBuffer, {flag: 'w'});
+    writeFileSync(`.debug/${encodedName}_RAW.png`, rawImageBuffer, {flag: 'w'});
     // */
+
+    /*
+
+      "validRegex": "^[12]?[0-9]$",
+
+      "validRegex": "^[12]?[0-9]$",
+
+      "validRegex": "^[12]?[0-9]$",
+
+      "validRegex": "^[12]?[0-9]$",
+     */
     
     // The output is a stateModel that potentially has VALUE defined for any number of landmarks
     let output = {...stateModel};
@@ -277,7 +290,8 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
 
         switch (landMark.type) {
             case "ocr":
-                return recognizeOCR(landMark, imageBuffer, minX, minY);
+                const bufferToUse = landMark.useOriginal ? rawImageBuffer : imageBuffer;
+                return recognizeOCR(landMark, bufferToUse, minX, minY);
             case "color":
                 return recognizeColor(landMark, rawImageBuffer, minX, minY);
             case "colorCount":

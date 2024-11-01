@@ -92,14 +92,17 @@ const overTimeConsensus = new DraggingConsensus(0, 20, 1, 6)
 let overTimeApplied = false;
 
 export default function handleProcessedGameState(processedGameState: StateModel) {
+    const ranks = ["first", "second", "third", "fourth"];
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
-    const ranks = ["color_first", "color_second", "color_third"];
+    const colorRanks = ["color_first", "color_second", "color_third"];
 
-    // Sort out the ranks of the teams
+    /**
+     * Sort out the ranks of the teams
+     */
     let remainingTeams = teams;
 
-    ranks.forEach(rank => {
+    colorRanks.forEach(rank => {
         const referenceColor = processedGameState.gameState.find(landmark => landmark.name === rank)!.VALUE! as string;
         // console.warn("=== " + rank + " ===")
         const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
@@ -145,28 +148,41 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     }
 
     /**
+     * Track team respawns
+     */
+    ranks.forEach(rank => {
+        const respawnLandmark = processedGameState.gameState.find(landmark => landmark.name === `respawn_${rank}`)! as LandMarkOCR;
+        const respawn = parseInt(respawnLandmark.VALUE!, 10);
+
+        document.getElementById(`respawn_${rank}`)!.innerText = respawn.toString();
+
+        // TODO can probably use the team color to corroborate a potential team respawn, especially if you move it down a few pixels to the bottom left
+        //  instead of the top left
+    })
+
+
+    /**
      * Track the current deposits
      */
-    const captureGroups = ["first", "second", "third", "fourth"];
     let teamsCapturing: string[] = []
 
-    captureGroups.forEach(captureGroup => {
+    ranks.forEach(rank => {
         try {
             let progress = 0;
             let remaining = 0;
 
             for (let i = 1; i <= 3; i++) {
-                const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress${i}_${captureGroup}`)! as LandMarkColorCountA;
+                const progressLandmark = processedGameState.gameState.find(landmark => landmark.name === `captureProgress${i}_${rank}`)! as LandMarkColorCountA;
 
-                const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
+                const response = JSON.parse(progressLandmark.VALUE!) as ColorsAndThresholds;
 
                 progress += response["#CEC821"]
                 remaining += response["#877E0A"]
             }
-            const readOut = document.getElementById(`captureProgress1_${captureGroup}`)!;
+            const readOut = document.getElementById(`captureProgress1_${rank}`)!;
 
             let tmpDA: DraggingAverage;
-            switch (captureGroup) {
+            switch (rank) {
                 case "first":
                     tmpDA = tmp_FirstDraggingCapture;
                     break;
@@ -189,7 +205,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 // Filtering out ~100% reads, they seem to be noise
                 a = tmpDA!.average(percent >= 99 ? 0 : percent);
 
-                teamsCapturing.push(captureGroup);
+                teamsCapturing.push(rank);
             } else {
                 a = tmpDA!.average(0);
             }

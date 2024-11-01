@@ -8,6 +8,10 @@ const handlers: { [modelName: string]: (processedGameState: StateModel) => void 
     "thefinals_ranked": require("./stateHandlers/thefinals_ranked").default,
 }
 
+function isLandmarkWithValidRegex(landmark: any): landmark is LandMarkOCR {
+    return landmark.hasOwnProperty('validRegex');
+}
+
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
     const constraints = {
         video: {
@@ -35,14 +39,9 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         maxY = Math.max(maxY, landmark.rect.top + landmark.rect.height)
 
         // Collect valid regex
-        try {
-            const landMarkOCR = landmark as LandMarkOCR;
-
-            if (landMarkOCR.validRegex) {
-                regexValidators[landMarkOCR.name] = new RegExp(landMarkOCR.validRegex);
-            }
-        } catch { }
-
+        if (isLandmarkWithValidRegex(landmark) && landmark.validRegex !== "") {
+            regexValidators[landmark.name] = new RegExp(landmark.validRegex!);
+        }
 
         // Collect rects
         debugRects.push(landmark.rect)
