@@ -1,38 +1,73 @@
-import {
-    ColorsAndThresholds,
-    LandMarkColorCount,
-    LandMarkColorCountA,
-    LandMarkOCR,
-    StateModel
-} from "../processGameFrame";
+import {ColorsAndThresholds, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
-import {Simulate} from "react-dom/test-utils";
-import progress = Simulate.progress;
+import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
 
 const defaultColorElement = document.createElement("div")
 defaultColorElement.id = "color_default"
 
+type Ranks = "first" | "second" | "third" | "fourth";
+type DepositDenominations = 7000 | 10000 | 15000;
+
 const RULES = {
     depositAmounts: [7000, 10000, 15000],
     accumulateCashAmounts: [500, 3000, 5000, 7000],
-    teamKillPenalty: 0.9
+    teamKillPenalty: 0.9,
+    lengthOfGame: 9 * 60
 }
 
-class Team {
-    private cash: number = 0;
-    private depositControlled: number = -1;
+const SETTINGS = {
+    timerAdjustment: -1
+}
 
-    constructor(protected color: string, public name: string) {}
+let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
+
+class Team {
+    public cash: number = 0;
+
+    constructor(protected color: string, public name: string, public rank: Ranks) {
+
+    }
 
     get getColor() {
         return this.color;
     }
 }
 
-const myTeam = new Team("#02b9f1", "Our Team")
-const pinkTeam = new Team("#f902df", "Pink Team")
-const orangeTeam = new Team("#ff930e", "Orange Team")
-const purpleTeam = new Team("#b551ff", "Purple Team")
+class Deposit {
+    private readonly duration: number;
+    constructor(public value: DepositDenominations, protected timeRemainingAtStart: number, controllingTeam: Team | null = null) {
+        const t = timeRemainingAtStart;
+
+        if (t < 1) {
+            this.duration = 60;
+        } else
+        if (t <= 30) {
+            this.duration = 90;
+        } else
+        if (t <= 60) {
+            this.duration = 120;
+        }
+        else {
+            this.duration = 130;
+        }
+    }
+
+    public remainingSeconds() {
+        return this.timeRemainingAtStart - this.duration;
+    }
+}
+
+const myTeam = new Team("#02b9f1", "Our Team", "first")
+const pinkTeam = new Team("#f902df", "Pink Team", "second")
+const orangeTeam = new Team("#ff930e", "Orange Team", "third")
+const purpleTeam = new Team("#b551ff", "Purple Team", "fourth")
+
+const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
+
+const tmp_FirstDraggingCapture = new DraggingAverage();
+const tmp_SecondDraggingCapture = new DraggingAverage();
+const tmp_ThirdDraggingCapture = new DraggingAverage();
+const tmp_FourthDraggingCapture = new DraggingAverage();
 
 function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: Team, index: number } {
     let teamToPop = 0;
@@ -49,84 +84,13 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
     return { closestTeam: teams[teamToPop], index: teamToPop };
 }
 
-let consensus_lastStableStandings: Team[];
-/**
- * Computes a consensus value based on a rolling history of inputs.
- * Maintains a history of previous values up to a specified limit, computes the mode
- * of the history, and handles noise by checking frequency thresholds.
- *
- * @param nextValue - The next input value to consider in the consensus calculation
- * @param history - An array holding the history of values for rolling consensus calculation
- * @param historyLimit - The maximum number of historical values to maintain
- * @param lowNoiseLimit - The maxFrequency threshold below which historical noise is considered high, a highly stable historical value should be returned in this case
- * @param highStabilityLimit - The maxFrequency threshold above which a mode is considered highly stable
- * @return The consensus value based on historical frequency analysis or the next input value if no mode is found
- */
-function consensus<T>(nextValue: T, history: T[], historyLimit: number, lowNoiseLimit: number, highStabilityLimit: number): {value: T, frequency: number} {
-    // Keep the rolling history
-    history.push(nextValue)
-    
-    if (history.length > historyLimit) {
-        history.shift();
-    }
-    
-    // Calculate the mode
-    const frequency = new Map<string, number>();
+const newCashOutStarted = new DraggingConsensus(false, 10, 2, 6);
+const gameTimer = new SuggestTimer(RULES.lengthOfGame, 60);
+let gameTimerSynchronized = false;
 
-    history.forEach((value) => {
-        const hashed = JSON.stringify(value);
+const overTimeConsensus = new DraggingConsensus(0, 20, 1, 6)
+let overTimeApplied = false;
 
-        frequency.set(hashed, (frequency.get(hashed) || 0) + 1)
-    });
-
-    let mode: T | null = null;
-    let maxFrequency = 0;
-    for (const [value, count] of frequency) {
-        if (count > maxFrequency) {
-            maxFrequency = count;
-            mode = JSON.parse(value) as T;
-        }
-    }
-
-    /// Update stable consensus
-    if (maxFrequency > highStabilityLimit) {
-        // Team consensus
-        if ((nextValue as any) instanceof Array && (nextValue as any)[0] instanceof Team) {
-            consensus_lastStableStandings = mode as Team[];
-        }
-    }
-
-    /// Filter noisy history
-    // Team consensus
-    if (consensus_lastStableStandings !== undefined && history.length > lowNoiseLimit && maxFrequency < lowNoiseLimit) {
-        console.warn("Low noise detected, returning last stable value and flushing buffer");
-        history.length = 0;
-        history.push(nextValue);
-
-        // Team consensus
-        if ((nextValue as any) instanceof Array && (nextValue as any)[0] instanceof Team) {
-            return {
-                value: consensus_lastStableStandings as T,
-                frequency: maxFrequency
-            }
-        }
-    }
-
-    let output = {
-        value: nextValue,
-        frequency: -1
-    }
-
-    if (mode) {
-        output = {
-            value: mode,
-            frequency: maxFrequency
-        }
-    }
-    return output;
-}
-
-let history_sortedTeams: Team[][] = []
 export default function handleProcessedGameState(processedGameState: StateModel) {
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
@@ -150,10 +114,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     });
     sortedTeams.push(remainingTeams[0]);
 
-    const consensusTeams = consensus(sortedTeams, history_sortedTeams, 15, 5, 10)
+    const consensusTeams = TeamDraggingConsensus.consensus(sortedTeams)
     const c = consensusTeams.value || sortedTeams
-
-    // console.log(`[${consensusTeams.frequency || -100}] FIRST: ${c[0].name}    | SECOND: ${c[1].name}    | THIRD: ${c[2].name}    | LAST: ${c[3].name}`);
 
     for (let i = 0; i < c.length; i++) {
         const team = c[i];
@@ -162,15 +124,19 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         switch (i) {
             case 0:
                 target = document.getElementById("color_first")
+                team.rank = "first";
                 break;
             case 1:
                 target = document.getElementById("color_second")
+                team.rank = "second";
                 break;
             case 2:
                 target = document.getElementById("color_third")
+                team.rank = "third";
                 break;
             case 3:
                 target = document.getElementById("color_fourth")
+                team.rank = "fourth";
                 break;
         }
 
@@ -182,29 +148,60 @@ export default function handleProcessedGameState(processedGameState: StateModel)
      * Track the current deposits
      */
     const captureGroups = ["first", "second", "third", "fourth"];
+    let teamsCapturing: string[] = []
 
     captureGroups.forEach(captureGroup => {
         try {
-            const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress_${captureGroup}`)! as LandMarkColorCountA;
+            let progress = 0;
+            let remaining = 0;
 
-            const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
+            for (let i = 1; i <= 3; i++) {
+                const progressStr = processedGameState.gameState.find(landmark => landmark.name === `captureProgress${i}_${captureGroup}`)! as LandMarkColorCountA;
 
-            const progress = response["#CEC821"]
-            const remaining = response["#877E0A"]
+                const response = JSON.parse(progressStr.VALUE!) as ColorsAndThresholds;
 
-            const readOut = document.getElementById(`captureProgress_${captureGroup}`)!;
-
-            // Should filter out random pops of color
-            if (progress + remaining > 5) {
-
-                const percent = ((progress / (progress + remaining)) * 100);
-                readOut.innerText = isNaN(percent) ? "--" : `${percent.toFixed()}%` // TODO replace with a dragging average
-            } else {
-                readOut.innerText = "--";
+                progress += response["#CEC821"]
+                remaining += response["#877E0A"]
             }
+            const readOut = document.getElementById(`captureProgress1_${captureGroup}`)!;
+
+            let tmpDA: DraggingAverage;
+            switch (captureGroup) {
+                case "first":
+                    tmpDA = tmp_FirstDraggingCapture;
+                    break;
+                case "second":
+                    tmpDA = tmp_SecondDraggingCapture;
+                    break;
+                case "third":
+                    tmpDA = tmp_ThirdDraggingCapture;
+                    break;
+                case "fourth":
+                    tmpDA = tmp_FourthDraggingCapture;
+                    break;
+            }
+
+            const percent = ((progress / (progress + remaining)) * 100);
+            let a;
+
+            // The sum is for filtering out noisy yellow backgrounds
+            if (progress + remaining > 5 && !isNaN(percent)) {
+                // Filtering out ~100% reads, they seem to be noise
+                a = tmpDA!.average(percent >= 99 ? 0 : percent);
+
+                teamsCapturing.push(captureGroup);
+            } else {
+                a = tmpDA!.average(0);
+            }
+
+            readOut.innerText = a.toFixed();
 
         } catch (e) {}
     })
+
+    if (newCashOutStarted.consensus(teamsCapturing.length > 0)) {
+        // console.log("New cashout started! By...", teamsCapturing)
+    }
 
     /**
      * Track the game timer
@@ -213,7 +210,44 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const gameTimeRemainingLandmark = processedGameState.gameState.find(landmark => landmark.name === "game_timeRemaining") as LandMarkOCR;
 
     if (gameTimeRemainingLandmark!.VALUE) {
-        gameTime.innerText = gameTimeRemainingLandmark!.VALUE;
+        if (!gameTimerSynchronized) {
+            const [minS, secS] = gameTimeRemainingLandmark!.VALUE.split(":", 2);
+            const minutes = parseInt(minS, 10);
+            const seconds = parseInt(secS, 10);
+            const totalSeconds = minutes * 60 + seconds;
+            const remainingTime = totalSeconds > RULES.lengthOfGame ? RULES.lengthOfGame : totalSeconds;
+
+            // Use TimerSuggest
+            gameTimer.suggest(remainingTime)
+        }
+        else if (!overTimeApplied)
+        {
+            const overTimeStrings = gameTimeRemainingLandmark!.VALUE.split("+", 2);
+
+            if (overTimeStrings.length === 2) {
+                const [minS, secS] = overTimeStrings[1].split(":", 2);
+                const minutes = parseInt(minS, 10);
+                const seconds = parseInt(secS, 10);
+                const overTimeSeconds = minutes * 60 + seconds;
+
+                const addendOverTime = overTimeConsensus.stableConsensus(overTimeSeconds)
+
+                if (addendOverTime) {
+                    console.log(`Detected overtime, adding ${addendOverTime.value}s`)
+                    overTimeApplied = true;
+                    gameTimer.adjustStart(addendOverTime.value);
+                }
+            }
+        }
+    }
+
+    const t = gameTimer.remaining
+    gameTime.innerText = `${Math.floor(t / 60)}:${t % 60 < 10 ? '0' : ''}${t % 60}`;
+
+    if (gameTimer.stable && !gameTimerSynchronized) {
+        gameTimerSynchronized = true;
+        gameTimer.adjustStart(SETTINGS.timerAdjustment)
+        console.log("Game Time synchronized")
     }
 
     /**
