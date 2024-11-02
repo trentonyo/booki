@@ -162,6 +162,113 @@ export class SuggestTimer {
 
     stop(resetStability = true) {
         this.startedAt = null;
-        this.stableSuggestions = 0;
+
+        if (resetStability) {
+            this.stableSuggestions = 0;
+        }
+    }
+}
+
+export class PredictorBayesianTimeBased {
+    private readonly numberOfTeams: number;
+    private prior: number[];
+
+    constructor(teamAdvantages: number[], protected readonly gameDuration: number, private scoringRateMean: number, private scoringRateStd: number) {
+        this.prior = normalizeArray(teamAdvantages);
+        this.numberOfTeams = teamAdvantages.length;
+    }
+
+    private calculateTimeRemainingFactor(currentTime: number): number {
+        /**
+         * Calculate the impact of remaining time on win probability
+         * Returns a factor that increases certainty as time decreases
+         */
+        const timeRemaining = this.gameDuration - currentTime;
+        return 1 + Math.pow(1 - timeRemaining / this.gameDuration, 2);
+    }
+
+    private calculateScoreLikelihood(scores: number[], currentTime: number): number[] {
+        /**
+         * Calculate likelihood of current scores given team strength
+         * Uses a normal distribution based on expected scoring rates
+         */
+        const expectedScores = this.scoringRateMean * currentTime;
+
+        return scores.map(() => {
+            // Approximate normal distribution PDF
+            const x = (expectedScores - expectedScores) / (this.scoringRateStd * currentTime);
+            return Math.exp(-0.5 * x * x) / (this.scoringRateStd * currentTime * Math.sqrt(2 * Math.PI));
+        });
+    }
+
+    private updatePriors(newPriors: number[]): void {
+        /**
+         * Update prior probabilities based on new information
+         */
+        if (newPriors.length !== this.numberOfTeams) {
+            throw new Error(`New priors must contain exactly ${this.numberOfTeams} values`);
+        }
+        this.prior = [...newPriors];
+    }
+
+    private calculateWinProbabilities(
+        scores: number[],
+        currentTime: number,
+        momentumFactors?: number[]
+    ): number[] {
+        /**
+         * Calculate win probabilities for each team given current game state
+         */
+
+            // Calculate score-based likelihoods
+        let scoreLikelihoods = this.calculateScoreLikelihood(scores, currentTime);
+
+        // Apply momentum factors if provided
+        if (momentumFactors) {
+            scoreLikelihoods = scoreLikelihoods.map((likelihood, i) =>
+                likelihood * momentumFactors[i]
+            );
+        }
+
+        // Calculate time remaining impact
+        const timeFactor = this.calculateTimeRemainingFactor(currentTime);
+
+        // Calculate current score advantages
+        const meanScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const scoreAdvantages = scores.map(score =>
+            Math.exp((score - meanScore) * timeFactor * 0.1)
+        );
+
+        // Combine all factors using Bayes' theorem
+        const posteriorNominal = this.prior.map((prior, i) =>
+            prior * scoreLikelihoods[i] * scoreAdvantages[i]
+        );
+
+        // Normalize to get probabilities
+        return normalizeArray(posteriorNominal);
+    }
+
+    public calculateNewPriors(
+        scores: number[],
+        currentTime: number,
+        momentumFactors?: number[]
+    ): number[] {
+        const newPrior = this.calculateWinProbabilities(scores, currentTime, momentumFactors);
+        this.updatePriors(newPrior);
+        return newPrior;
+    }
+}
+
+// Utility function to normalize an array of numbers
+export function normalizeArray(arr: number[], method: ("linear" | "sigmoid") = "linear"): number[] {
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+
+    if (method === "linear") {
+        return arr.map(value => (value - min) / (max - min));
+    } else if (method === "sigmoid") {
+        return arr.map(value => 1 / (1 + Math.exp(-value)));
+    } else {
+        throw new Error(`Unknown normalization method: ${method}`);
     }
 }
