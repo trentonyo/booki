@@ -5,6 +5,18 @@ import { StateModelMap } from "../../server";
 import { StateModel } from "../../scripts/processGameFrame";
 import { startCamera } from "../../scripts/feed";
 
+import DefaultGameStateView from "../../scripts/stateHandlers/default_view";
+import TheFinalsRankedGameStateView from "../../scripts/stateHandlers/thefinals_ranked_view";
+
+function gameStateView(gameStateModelName: string) {
+    switch (gameStateModelName) {
+        case "thefinals_ranked":
+            return TheFinalsRankedGameStateView;
+        default:
+            return DefaultGameStateView;
+    }
+}
+
 const FeedClientComponent: React.FC = () => {
     const [gameStateModel, setGameStateModel] = useState<StateModel | null>(null);
 
@@ -63,6 +75,8 @@ const FeedClientComponent: React.FC = () => {
         ))
     }
 
+    const view = gameStateView(modelName!)
+
     return (
         <>
             <a href="/"><h1 className="text-xl underline p-6 italic">🡠 Return Home</h1></a>
@@ -71,23 +85,7 @@ const FeedClientComponent: React.FC = () => {
             >
                 {gameStateModel.constraints.displayName}
             </h2>
-            <div
-                id="raw_data"
-                className="flex gap-4"
-            >
-                <table>
-                    <thead>
-                    <tr>
-                        <th>landMark</th>
-                        <th>value</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {dataFeed}
-                    </tbody>
-                </table>
-                <video id="video" width="640" height="480"></video>
-            </div>
+            {view(dataFeed)}
         </>
     );
 };

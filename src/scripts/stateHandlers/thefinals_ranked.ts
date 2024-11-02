@@ -2,15 +2,21 @@ import {ColorsAndThresholds, LandMarkColor, LandMarkColorCountA, LandMarkOCR, St
 import {colorDistance} from "../colorUtil";
 import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
 
-const defaultColorElement = document.createElement("div")
-defaultColorElement.id = "color_default"
+/**
+ * Set up the page
+ */
+let teamSlots = document.getElementById("team_slots");
 
 type Ranks = "first" | "second" | "third" | "fourth";
 type DepositDenominations = 7000 | 10000 | 15000;
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000],
-    accumulateCashAmounts: [500, 3000, 5000, 7000],
+    /*                     kill  cashbox                */
+    /*                     |     |     DEPOSIT STARTED  */
+    /*                     |     |     1st   2nd   3rd  */
+    /*                     |     |     |     |     |    */
+    accumulateCashAmounts: [500, 1000, 3000, 5000, 7000],
     teamKillPenalty: 0.9,
     lengthOfGame: 9 * 60,
     respawnTime: 28
@@ -24,6 +30,8 @@ let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
 
 class Team {
     public cash: number = 0;
+    protected respawnTimer: SuggestTimer | null = null;
+    protected deposit: Deposit | null = null;
 
     constructor(protected color: string, protected respawnColor: string, public name: string, public rank: Ranks) {
 
@@ -35,6 +43,40 @@ class Team {
 
     get getRespawnColor() {
         return this.respawnColor;
+    }
+
+    public updateCash(amount: number) {
+        // TODO validate new cash amount
+        //  should be a factor of RULES.accumulateCashAmounts
+        //  or reduced by RULES.teamKillPenalty
+        //
+        // Can also introduce an "uncertainty" margin by which we allow values outside those parameters
+
+
+        if (true /* validate here */) {
+            this.cash = amount;
+        }
+    }
+
+    public assignRespawnTimer(timer: SuggestTimer) {
+        this.respawnTimer = timer;
+    }
+
+    public assignDeposit(deposit: Deposit) {
+        this.deposit = deposit;
+    }
+
+    public generateElement() {
+        const element = document.createElement("div");
+        element.classList.add("team");
+        element.style.backgroundColor = this.color;
+        element.innerHTML = `
+            <div class="team-name">${this.name}</div>
+            <div class="team-cash">${this.cash}</div>
+            <div class="team-respawn-timer">${(this.respawnTimer && this.respawnTimer!.isStarted) ? this.respawnTimer!.remaining : "--"}</div>
+        `;
+
+        return element;
     }
 }
 
@@ -110,7 +152,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const colorRanks = ["color_first", "color_second", "color_third"];
 
     /**
-     * Sort out the ranks of the teams, and watchdog for respawns
+     * Sort out the ranks of the teams
      */
     let remainingTeams = teams;
 
@@ -135,28 +177,28 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     for (let i = 0; i < c.length; i++) {
         const team = c[i];
 
-        let target: HTMLElement | null = document.getElementById("color_default");
+        // let target: HTMLElement | null = document.getElementById("color_default");
         switch (i) {
             case 0:
-                target = document.getElementById("color_first")
+                // target = document.getElementById("color_first")
                 team.rank = "first";
                 break;
             case 1:
-                target = document.getElementById("color_second")
+                // target = document.getElementById("color_second")
                 team.rank = "second";
                 break;
             case 2:
-                target = document.getElementById("color_third")
+                // target = document.getElementById("color_third")
                 team.rank = "third";
                 break;
             case 3:
-                target = document.getElementById("color_fourth")
+                // target = document.getElementById("color_fourth")
                 team.rank = "fourth";
                 break;
         }
 
-        target!.innerText = team.name;
-        target!.style.backgroundColor = team.getColor;
+        // target!.innerText = team.name;
+        // target!.style.backgroundColor = team.getColor;
     }
 
     /**
@@ -178,14 +220,14 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     })
 
     RespawnTimers.forEach((timer, index) => {
-        const readOut = document.getElementById(`respawn_${ranks[index]}`)!;
+        // const readOut = document.getElementById(`respawn_${ranks[index]}`)!;
         if (timer.isStarted) {
             if (timer.remaining! <= 0) {
                 timer.stop();
             } else if (timer.stable && timer.remaining) {
-                readOut.innerText = `${timer.remaining.toString()}s`;
+                // readOut.innerText = `${timer.remaining.toString()}s`;
             } else {
-                readOut.innerText = "";
+                // readOut.innerText = "";
             }
         }
     })
@@ -224,7 +266,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 progress += response["#CEC821"]
                 remaining += response["#877E0A"]
             }
-            const readOut = document.getElementById(`captureProgress1_${rank}`)!;
+            // const readOut = document.getElementById(`captureProgress1_${rank}`)!;
 
             let tmpDA: DraggingAverage;
             switch (rank) {
@@ -255,7 +297,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 a = tmpDA!.average(0);
             }
 
-            readOut.innerText = `~${a.toFixed()}%`;
+            // readOut.innerText = `~${a.toFixed()}%`;
 
         } catch (e) {}
     })
@@ -267,7 +309,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     /**
      * Track the game timer
      */
-    const gameTime = document.getElementById("game_timeRemaining")!;
+    // const gameTime = document.getElementById("game_timeRemaining")!;
     const gameTimeRemainingLandmark = processedGameState.gameState.find(landmark => landmark.name === "game_timeRemaining") as LandMarkOCR;
 
     if (gameTimeRemainingLandmark!.VALUE) {
@@ -303,7 +345,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     }
 
     const t = gameTimer.remaining!
-    gameTime.innerText = `${Math.floor(t / 60)}:${t % 60 < 10 ? '0' : ''}${t % 60}`;
+    // gameTime.innerText = `${Math.floor(t / 60)}:${t % 60 < 10 ? '0' : ''}${t % 60}`;
 
     if (gameTimer.stable && !gameTimerSynchronized) {
         gameTimerSynchronized = true;
@@ -314,12 +356,34 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     /**
      * Track teams' cash
      */
-    const cashLandMarks = ["score_firstCash", "score_secondCash", "score_thirdCash", "score_fourthCash"]
-
-    cashLandMarks.forEach(landmarkName => {
-        const targetDOM = document.getElementById(landmarkName)!;
+    ranks.forEach((rank, index) => {
+        const landmarkName = `score_${rank}Cash`;
         const cashLandMark = processedGameState.gameState.find(landmark => landmark.name === landmarkName) as LandMarkOCR;
 
-        targetDOM.innerHTML = cashLandMark.VALUE || targetDOM.innerHTML;
+        if (cashLandMark.VALUE) {
+            const nominal = cashLandMark.VALUE.substring(1);
+            const cash = parseInt(nominal, 10);
+
+            if (!isNaN(cash) && cash >= 0) {
+                sortedTeams[index].updateCash(cash);
+            }
+        }
     })
+
+    /**
+     * Update readout
+     */
+    if (teamSlots) {
+        teamSlots.innerHTML = ""
+
+        for (let i = 0; i < sortedTeams.length; i++) {
+            const team = sortedTeams[i];
+            const teamHTML = team.generateElement()
+
+            teamSlots.appendChild(teamHTML);
+        }
+    } else {
+        console.warn("'#team_slots' not found, looking again")
+        teamSlots = document.getElementById("team_slots");
+    }
 }

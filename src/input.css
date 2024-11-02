@@ -5,3 +5,7 @@
 html {
     @apply bg-slate-200
 }
+
+.hidden {
+    display: none;
+}
