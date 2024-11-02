@@ -12,7 +12,8 @@ const RULES = {
     depositAmounts: [7000, 10000, 15000],
     accumulateCashAmounts: [500, 3000, 5000, 7000],
     teamKillPenalty: 0.9,
-    lengthOfGame: 9 * 60
+    lengthOfGame: 9 * 60,
+    respawnTime: 28
 }
 
 const SETTINGS = {
@@ -24,12 +25,16 @@ let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
 class Team {
     public cash: number = 0;
 
-    constructor(protected color: string, public name: string, public rank: Ranks) {
+    constructor(protected color: string, protected respawnColor: string, public name: string, public rank: Ranks) {
 
     }
 
     get getColor() {
         return this.color;
+    }
+
+    get getRespawnColor() {
+        return this.respawnColor;
     }
 }
 
@@ -57,10 +62,10 @@ class Deposit {
     }
 }
 
-const myTeam = new Team("#02b9f1", "Our Team", "first")
-const pinkTeam = new Team("#f902df", "Pink Team", "second")
-const orangeTeam = new Team("#ff930e", "Orange Team", "third")
-const purpleTeam = new Team("#b551ff", "Purple Team", "fourth")
+const myTeam = new Team("#02B9F1", "#76B9D1", "Our Team", "first")
+const pinkTeam = new Team("#F736C7", "#DD8DC4", "Pink Team", "second")
+const orangeTeam = new Team("#FD8803", "#DFAB7F", "Orange Team", "third")
+const purpleTeam = new Team("#AA41FD", "#BD9CE4", "Purple Team", "fourth")
 
 const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
 
@@ -68,6 +73,13 @@ const tmp_FirstDraggingCapture = new DraggingAverage();
 const tmp_SecondDraggingCapture = new DraggingAverage();
 const tmp_ThirdDraggingCapture = new DraggingAverage();
 const tmp_FourthDraggingCapture = new DraggingAverage();
+
+const RespawnTimers = [
+    new SuggestTimer(RULES.respawnTime, false, 8, 2),
+    new SuggestTimer(RULES.respawnTime, false, 8, 2),
+    new SuggestTimer(RULES.respawnTime, false, 8, 2),
+    new SuggestTimer(RULES.respawnTime, false, 8, 2)
+]
 
 function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: Team, index: number } {
     let teamToPop = 0;
@@ -85,7 +97,7 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
 }
 
 const newCashOutStarted = new DraggingConsensus(false, 10, 2, 6);
-const gameTimer = new SuggestTimer(RULES.lengthOfGame, 60);
+const gameTimer = new SuggestTimer(RULES.lengthOfGame, true, 60);
 let gameTimerSynchronized = false;
 
 const overTimeConsensus = new DraggingConsensus(0, 20, 1, 6)
@@ -150,26 +162,48 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     /**
      * Track team respawns
      */
-    ranks.forEach(rank => {
+    ranks.forEach((rank, index) => {
         const respawnLandmark = processedGameState.gameState.find(landmark => landmark.name === `respawn_${rank}`)! as LandMarkOCR;
+
+        const respawnTimer = RespawnTimers[index];
         const respawn = parseInt(respawnLandmark.VALUE!, 10);
 
-        document.getElementById(`respawn_${rank}`)!.innerText = respawn.toString();
+        if (respawn > 0) {
+            if (!respawnTimer.isStarted) {
+                respawnTimer.start();
+            }
 
-        // TODO can probably use the team color to corroborate a potential team respawn, especially if you move it down a few pixels to the bottom left
-        //  instead of the top left
+            respawnTimer.suggest(respawn)
+        }
     })
 
+    RespawnTimers.forEach((timer, index) => {
+        const readOut = document.getElementById(`respawn_${ranks[index]}`)!;
+        if (timer.isStarted) {
+            if (timer.remaining! <= 0) {
+                timer.stop();
+            } else if (timer.stable && timer.remaining) {
+                readOut.innerText = `${timer.remaining.toString()}s`;
+            } else {
+                readOut.innerText = "";
+            }
+        }
+    })
+
+    /*
     sortedTeams.forEach((team) => {
         // Check if a respawn is likely for this team
         const rankLandmark = processedGameState.gameState.find(landmark => landmark.name === `color_${team.rank}`)! as LandMarkColor;
 
-        const colorDiff = colorDistance(team.getColor, rankLandmark.VALUE!, "CMC");
+        const colorTeamDiff = colorDistance(team.getColor, rankLandmark.VALUE!, "2000");
+        const colorRespawnDiff = colorDistance(team.getRespawnColor, rankLandmark.VALUE!, "2000");
 
-        if (colorDiff < 26) {
-            console.log(`Potential Team Respawn: ${team.name} (${team.getColor}) vs ${rankLandmark.VALUE!} (${colorDiff})`);
+        if (colorRespawnDiff < colorTeamDiff) {
+            // console.log(`${team.name} respawn favor: ${colorRespawnDiff - colorTeamDiff} (${colorRespawnDiff} < ${colorTeamDiff})`);
+            // TODO these color diffs are not appearing very helpful
         }
     })
+     */
 
 
     /**
@@ -221,7 +255,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 a = tmpDA!.average(0);
             }
 
-            readOut.innerText = a.toFixed();
+            readOut.innerText = `~${a.toFixed()}%`;
 
         } catch (e) {}
     })
@@ -268,7 +302,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         }
     }
 
-    const t = gameTimer.remaining
+    const t = gameTimer.remaining!
     gameTime.innerText = `${Math.floor(t / 60)}:${t % 60 < 10 ? '0' : ''}${t % 60}`;
 
     if (gameTimer.stable && !gameTimerSynchronized) {

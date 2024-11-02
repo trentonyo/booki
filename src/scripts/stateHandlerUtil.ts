@@ -109,34 +109,59 @@ export class DraggingConsensus<T> {
 }
 
 export class SuggestTimer {
-    public stable = false;
-    protected startedAt: number;
+    private stableSuggestions = 0;
+    protected startedAt: number | null = null;
 
-    constructor(protected duration: number, private suggestionThreshold: number = 10) {
+    constructor(protected duration: number, protected started: boolean = true, private suggestionThreshold: number = 10, private stableSuggestionMinimum: number = 1) {
         // Start the timer
+        if (started) {
+            this.start();
+        }
+    }
+
+    public start() {
+        this.started = true;
         this.startedAt = Math.round(Date.now() / 1000);
     }
 
-    public suggest(remainingSecondsSuggestion: number) {
-        if (!this.stable) {
-            const diff = remainingSecondsSuggestion - this.remaining;
+    public get stable() {
+        return this.stableSuggestions >= this.stableSuggestionMinimum;
+    }
 
-            // If the timer is dead on, set stable to true
+    public suggest(remainingSecondsSuggestion: number) {
+        if (this.started && !this.stable) {
+            const diff = remainingSecondsSuggestion - this.remaining!;
+
+            // If the timer is dead on, increase stability
             if (diff === 0) {
-                this.stable = true;
+                this.stableSuggestions++;
             }
             // Else, adjust timer to seconds
             else if (Math.abs(diff) < this.suggestionThreshold) {
-                this.startedAt += diff;
+                this.startedAt! += diff;
             }
         }
     }
 
+    public get isStarted() {
+        return this.started;
+    }
+
     public get remaining() {
-        return this.duration - (Math.round(Date.now() / 1000) - this.startedAt);
+        // If the timer is stopped, the time remaining should be null
+        if (this.startedAt! < 0) {
+            return null;
+        }
+
+        return this.duration - (Math.round(Date.now() / 1000) - this.startedAt!);
     }
 
     public adjustStart(addend: number) {
-        this.startedAt += addend;
+        this.startedAt! += addend;
+    }
+
+    stop(resetStability = true) {
+        this.startedAt = null;
+        this.stableSuggestions = 0;
     }
 }
