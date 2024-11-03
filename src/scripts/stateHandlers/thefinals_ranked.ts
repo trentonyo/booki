@@ -30,6 +30,7 @@ const SETTINGS = {
 let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
 
 class Team {
+    private hasMoreThanZero = false;
     public cash: number = 0;
     protected respawnTimer: SuggestTimer | null = null;
     protected deposit: Deposit | null = null;
@@ -61,16 +62,35 @@ class Team {
         const reductionOnly = this.cash * RULES.teamKillPenalty;
         const validReduction = reductionOnly === amount;
 
-        // TODO need a mechanism to "approve" of getting their first cash in hand, ignore $0 up until then.
-        //  once the initial zero is overcome, we should reject $0
-
-        if (amount > 0 && (validDepositAcc || validReduction || validAccumulation || validAccWithReduction)) {
-            console.warn(`Accepted cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
-            this.cash = amount;
-
-            this.cashDraggingConsensus.flush();
-            this.rejectedCashUpdates = 0;
+        /**
+         * First layer of protection:
+         *   Only accept amounts greater than zero if an "approved" amount greater than zero has come through
+         *   e.g. do not allow for the team's cash to be emptied at random
+         *
+         *   Allow values of zero if this team has not been found to have cash yet
+         *
+         * Second layer of protection:
+         *   Check if the amount does any of:
+         *   - increases cash by a deposit amount
+         *   - increases cash by a factor of common deposit amounts (RULES.accumulateCashAmounts)
+         *   - increases cash by a factor of common deposit amounts AND decreases by the possible decrement rate
+         *   - decreases cash by the possible decrement rate
+         *
+         * Third layer of protection:
+         *   If SETTINGS.rejectedCashStaleThreshold "bad" amounts have been suggested, assume we have lost the plot
+         *   and fall back on the dragging consensus value made up of the most recent stretch of rejected amounts.
+         */
+        if (
+            (amount > 0 || (amount === 0 && !this.hasMoreThanZero))
+            && (validDepositAcc || validReduction || validAccumulation || validAccWithReduction)
+        ) {
+            // console.warn(`Accepted cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
+            this.setCash(amount);
+            if (amount > 0) {
+                this.hasMoreThanZero = true;
+            }
         } else {
+            // Rejected cash updates introduce uncertainty to this.cash
             this.rejectedCashUpdates++;
 
             // Strange updates suggest a deposit
@@ -80,18 +100,25 @@ class Team {
                 console.error(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
             } else {
                 console.error(`Rejected cash value [${this.name}]: ${amount} (${this.cashDraggingConsensus.lastStable})`);
+                this.hasMoreThanZero = false;
             }
 
             // If the current count is stale, try a stable value from the dragging consensus
             const potentialStable = this.cashDraggingConsensus.stableConsensus(amount)
             if (this.rejectedCashUpdates > SETTINGS.rejectedCashStaleThreshold) {
                 if (potentialStable) {
-                    this.cash = potentialStable.value
+                    this.setCash(potentialStable.value)
 
                     console.warn(`Stale cash value possible for [${this.name}], falling back on dragging consensus with frequency ${potentialStable.frequency}`);
                 }
             }
         }
+    }
+
+    private setCash(amount: number) {
+        this.cash = amount
+        this.cashDraggingConsensus.flush();
+        this.rejectedCashUpdates = 0;
     }
 
     public assignRespawnTimer(timer: SuggestTimer) {
@@ -107,14 +134,27 @@ class Team {
     }
 
     public generateElement() {
+        // Respawn timer tasks
+        let respawnStr = "--";
+
+        if (this.respawnTimer) {
+            if (this.respawnTimer.isStarted) {
+                if (this.respawnTimer.remaining! <= 0) {
+                    this.respawnTimer.stop();
+                } else if (this.respawnTimer.stable && this.respawnTimer.remaining) {
+                    respawnStr = `respawn: ${this.respawnTimer.remaining.toString()}s`;
+                }
+            }
+        }
+
         const element = document.createElement("div");
         element.classList.add("team");
         element.style.backgroundColor = this.color;
         element.innerHTML = `
             <div class="team-name">${this.name}</div>
             <div class="team-cash">${this.cash}</div>
-            <div class="team-deposit-timer">${(this.deposit) ? `${this.deposit.remainingSeconds(gameTimer.remaining!)}s` : "--"}</div>
-            <div class="team-respawn-timer">${(this.respawnTimer && this.respawnTimer!.isStarted) ? this.respawnTimer!.remaining : "--"}</div>
+            <div class="team-deposit-timer">${(this.deposit) ? `deposit: ${this.deposit.remainingSeconds(gameTimer.remaining!)}s` : "--"}</div>
+            <div class="team-respawn-timer">${respawnStr}</div>
         `;
 
         return element;
@@ -187,18 +227,19 @@ let gameTimerSynchronized = false;
 const overTimeConsensus = new DraggingConsensus(0, 20, 1, 6)
 let overTimeApplied = false;
 
+const teamMightBeDepositing = [
+    false,
+    false,
+    false,
+    false
+]
+
 export default function handleProcessedGameState(processedGameState: StateModel) {
     const ranks = ["first", "second", "third", "fourth"];
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
     const colorRanks = ["color_first", "color_second", "color_third"];
 
-    let teamMightBeDepositing = [
-        false,
-        false,
-        false,
-        false
-    ]
     /**
      * Sort out the ranks of the teams, check if any might be depositing
      */
@@ -260,37 +301,13 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             }
 
             respawnTimer.suggest(respawn)
-        }
-    })
 
-    RespawnTimers.forEach((timer, index) => {
-        // const readOut = document.getElementById(`respawn_${ranks[index]}`)!;
-        if (timer.isStarted) {
-            if (timer.remaining! <= 0) {
-                timer.stop();
-            } else if (timer.stable && timer.remaining) {
-                // readOut.innerText = `${timer.remaining.toString()}s`;
-            } else {
-                // readOut.innerText = "";
+            if (respawnTimer.stable) {
+                const currentRankTeam = sortedTeams[index];
+                currentRankTeam.assignRespawnTimer(respawnTimer)
             }
         }
     })
-
-    /*
-    sortedTeams.forEach((team) => {
-        // Check if a respawn is likely for this team
-        const rankLandmark = processedGameState.gameState.find(landmark => landmark.name === `color_${team.rank}`)! as LandMarkColor;
-
-        const colorTeamDiff = colorDistance(team.getColor, rankLandmark.VALUE!, "2000");
-        const colorRespawnDiff = colorDistance(team.getRespawnColor, rankLandmark.VALUE!, "2000");
-
-        if (colorRespawnDiff < colorTeamDiff) {
-            // console.log(`${team.name} respawn favor: ${colorRespawnDiff - colorTeamDiff} (${colorRespawnDiff} < ${colorTeamDiff})`);
-            // TODO these color diffs are not appearing very helpful
-        }
-    })
-     */
-
 
     /**
      * Track the current deposits
@@ -349,7 +366,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             if (
                 !thisTeam.isDepositing
                 && numTeamsDepositing < 2
-                && (a >= 0.1 && thisTeam.mightBeDepositing)
+                && (a >= 10 && thisTeam.mightBeDepositing)
             ) {
                 const denomination = remainingDepositAmounts.pop()
 
