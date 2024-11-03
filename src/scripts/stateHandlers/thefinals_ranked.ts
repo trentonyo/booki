@@ -12,11 +12,11 @@ type DepositDenominations = 7000 | 10000 | 15000;
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000],
-    /*                     kill  cashbox                */
-    /*                     |     |     DEPOSIT STARTED  */
-    /*                     |     |     1st   2nd   3rd  */
-    /*                     |     |     |     |     |    */
-    accumulateCashAmounts: [500, 1000, 3000, 5000, 7000],
+    /*                     kill        3kills                 */
+    /*                     |     cbox  |     DEPOSIT STARTED  */
+    /*                     |     |     |     1st   2nd   3rd  */
+    /*                     |     |     |     |     |     |    */
+    accumulateCashAmounts: [500, 1000, 1500, 3000, 5000, 7000],
     teamKillPenalty: 0.9,
     lengthOfGame: 9 * 60,
     respawnTime: 28
@@ -33,6 +33,8 @@ class Team {
     protected respawnTimer: SuggestTimer | null = null;
     protected deposit: Deposit | null = null;
 
+    public mightBeDepositing = false;
+
     constructor(protected color: string, protected respawnColor: string, public name: string, public rank: Ranks) {
 
     }
@@ -46,15 +48,22 @@ class Team {
     }
 
     public updateCash(amount: number) {
-        // TODO validate new cash amount
-        //  should be a factor of RULES.accumulateCashAmounts
-        //  or reduced by RULES.teamKillPenalty
-        //
-        // Can also introduce an "uncertainty" margin by which we allow values outside those parameters
+        // TODO Can also introduce an "uncertainty" margin by which we allow values outside those parameters
+        //  and a "staleness" parameter where we are likely to take a new value if we haven't had an approved one in a while
+        const validDepositAcc = RULES.depositAmounts.some(accumulationAmount => amount % accumulationAmount === 0);
+        const validAccumulation = RULES.accumulateCashAmounts.some(accumulationAmount => amount % accumulationAmount === 0);
+        const validAccWithReduction = RULES.accumulateCashAmounts.some(accumulationAmount => amount % (accumulationAmount * RULES.teamKillPenalty) === 0);
 
+        const reductionOnly = this.cash * RULES.teamKillPenalty;
+        const validReduction = reductionOnly === amount;
 
-        if (true /* validate here */) {
+        if (validDepositAcc || validReduction || validAccumulation || validAccWithReduction) {
             this.cash = amount;
+        } else {
+            // TODO use known deposits to solve if a deposit is present
+            this.mightBeDepositing = true;
+
+            console.warn(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
         }
     }
 
@@ -66,6 +75,10 @@ class Team {
         this.deposit = deposit;
     }
 
+    public get isDepositing() {
+        return this.deposit !== null;
+    }
+
     public generateElement() {
         const element = document.createElement("div");
         element.classList.add("team");
@@ -73,6 +86,7 @@ class Team {
         element.innerHTML = `
             <div class="team-name">${this.name}</div>
             <div class="team-cash">${this.cash}</div>
+            <div class="team-deposit-timer">${(this.deposit) ? `${this.deposit.remainingSeconds(gameTimer.remaining!)}s` : "--"}</div>
             <div class="team-respawn-timer">${(this.respawnTimer && this.respawnTimer!.isStarted) ? this.respawnTimer!.remaining : "--"}</div>
         `;
 
@@ -82,7 +96,7 @@ class Team {
 
 class Deposit {
     private readonly duration: number;
-    constructor(public value: DepositDenominations, protected timeRemainingAtStart: number, controllingTeam: Team | null = null) {
+    constructor(public value: DepositDenominations, protected timeRemainingAtStart: number, controllingTeam: Team | null = null, protected progressAtStart: number = 0) {
         const t = timeRemainingAtStart;
 
         if (t < 1) {
@@ -97,10 +111,12 @@ class Deposit {
         else {
             this.duration = 130;
         }
+
+        this.timeRemainingAtStart += Math.round(this.duration * progressAtStart)
     }
 
-    public remainingSeconds() {
-        return this.timeRemainingAtStart - this.duration;
+    public remainingSeconds(timeRemaining: number) {
+        return this.duration - (this.timeRemainingAtStart - timeRemaining);
     }
 }
 
@@ -138,7 +154,6 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
     return { closestTeam: teams[teamToPop], index: teamToPop };
 }
 
-const newCashOutStarted = new DraggingConsensus(false, 10, 2, 6);
 const gameTimer = new SuggestTimer(RULES.lengthOfGame, true, 60);
 let gameTimerSynchronized = false;
 
@@ -151,8 +166,14 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const sortedTeams: Team[] = [];
     const colorRanks = ["color_first", "color_second", "color_third"];
 
+    let teamMightBeDepositing = [
+        false,
+        false,
+        false,
+        false
+    ]
     /**
-     * Sort out the ranks of the teams
+     * Sort out the ranks of the teams, check if any might be depositing
      */
     let remainingTeams = teams;
 
@@ -177,28 +198,24 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     for (let i = 0; i < c.length; i++) {
         const team = c[i];
 
-        // let target: HTMLElement | null = document.getElementById("color_default");
         switch (i) {
             case 0:
-                // target = document.getElementById("color_first")
                 team.rank = "first";
                 break;
             case 1:
-                // target = document.getElementById("color_second")
                 team.rank = "second";
                 break;
             case 2:
-                // target = document.getElementById("color_third")
                 team.rank = "third";
                 break;
             case 3:
-                // target = document.getElementById("color_fourth")
                 team.rank = "fourth";
                 break;
         }
 
-        // target!.innerText = team.name;
-        // target!.style.backgroundColor = team.getColor;
+        if (team.mightBeDepositing) {
+            teamMightBeDepositing[i] = true;
+        }
     }
 
     /**
@@ -251,7 +268,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     /**
      * Track the current deposits
      */
-    let teamsCapturing: string[] = []
+    const numTeamsDepositing = sortedTeams.filter(team => team.isDepositing).length;
 
     ranks.forEach(rank => {
         try {
@@ -269,18 +286,23 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             // const readOut = document.getElementById(`captureProgress1_${rank}`)!;
 
             let tmpDA: DraggingAverage;
+            let index: number;
             switch (rank) {
                 case "first":
                     tmpDA = tmp_FirstDraggingCapture;
+                    index = 0;
                     break;
                 case "second":
                     tmpDA = tmp_SecondDraggingCapture;
+                    index = 1;
                     break;
                 case "third":
                     tmpDA = tmp_ThirdDraggingCapture;
+                    index = 2;
                     break;
                 case "fourth":
                     tmpDA = tmp_FourthDraggingCapture;
+                    index = 3;
                     break;
             }
 
@@ -291,19 +313,41 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             if (progress + remaining > 5 && !isNaN(percent)) {
                 // Filtering out ~100% reads, they seem to be noise
                 a = tmpDA!.average(percent >= 99 ? 0 : percent);
-
-                teamsCapturing.push(rank);
             } else {
                 a = tmpDA!.average(0);
             }
 
-            // readOut.innerText = `~${a.toFixed()}%`;
+            // If it's probable that the team in this position is capturing and there is significant evidence of a capture in progress
+            const thisTeam = sortedTeams[index!];
+            if (
+                !thisTeam.isDepositing
+                && numTeamsDepositing < 2
+                && (a >= 0.1 && thisTeam.mightBeDepositing)
+            ) {
+                const denomination = remainingDepositAmounts.pop()
+
+                if (denomination) {
+                    // Since the dragging average tends to be lower than the true value, we adjust it here
+                    const progress = (a) / 100;
+                    const newDeposit = new Deposit(denomination as DepositDenominations, gameTimer.remaining!, thisTeam, progress);
+
+                    console.log(`Started a deposit of ${denomination} for ${thisTeam.name} with ${gameTimer.remaining!}s remaining in the game! (a = ${progress}, ${numTeamsDepositing} teams depositing)`)
+
+                    thisTeam.mightBeDepositing = false;
+                    thisTeam.assignDeposit(newDeposit);
+                } else {
+                    console.error("No denomination left to make a deposit with!")
+                }
+            }
 
         } catch (e) {}
     })
 
-    if (newCashOutStarted.consensus(teamsCapturing.length > 0)) {
-        // console.log("New cashout started! By...", teamsCapturing)
+    // If all two deposits are accounted for, then no other team might be depositing TODO this breaks if a team has both caps
+    if (numTeamsDepositing === 2) {
+        sortedTeams.forEach(team => {
+            team.mightBeDepositing = false;
+        })
     }
 
     /**
@@ -344,13 +388,16 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         }
     }
 
-    const t = gameTimer.remaining!
-    // gameTime.innerText = `${Math.floor(t / 60)}:${t % 60 < 10 ? '0' : ''}${t % 60}`;
+    if (gameTimer.stable) {
+        if (!gameTimerSynchronized) {
+            gameTimerSynchronized = true;
+            gameTimer.adjustStart(SETTINGS.timerAdjustment)
+            console.log("Game Time synchronized")
+        }
 
-    if (gameTimer.stable && !gameTimerSynchronized) {
-        gameTimerSynchronized = true;
-        gameTimer.adjustStart(SETTINGS.timerAdjustment)
-        console.log("Game Time synchronized")
+        const remainingMinutes = Math.floor(gameTimer.remaining! / 60);
+        const remainingSeconds = gameTimer.remaining! % 60;
+        document.getElementById("game_timer")!.innerText = `${remainingMinutes}:${remainingSeconds.toFixed(0).padStart(2, "0")}`;
     }
 
     /**
@@ -366,6 +413,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
             if (!isNaN(cash) && cash >= 0) {
                 sortedTeams[index].updateCash(cash);
+            } else {
+                console.warn(`Invalid cash value [${cashLandMark.name}]: ${cashLandMark.VALUE}`);
             }
         }
     })

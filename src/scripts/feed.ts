@@ -99,7 +99,13 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                 }
 
                 for (const datum of processedStateModel.gameState) {
-                    let potential: string | undefined = (datum.VALUE as string).trim()
+                    let potential: string | undefined
+                    try {
+                        potential = (datum.VALUE as string).trim()
+                    } catch (e) {
+                        console.warn("Still waiting for data, approximately 30s...")
+                        return;
+                    }
                     // If there is a regex validator set up, use it
                     if (regexValidators[datum.name]) {
                         const result = regexValidators[datum.name].exec(potential);
