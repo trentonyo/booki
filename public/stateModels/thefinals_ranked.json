@@ -200,7 +200,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 82, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -208,7 +208,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 137, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -216,7 +216,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 238, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -224,7 +224,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 291, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",

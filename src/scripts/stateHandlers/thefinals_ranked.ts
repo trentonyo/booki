@@ -23,7 +23,8 @@ const RULES = {
 }
 
 const SETTINGS = {
-    timerAdjustment: -1
+    timerAdjustment: -1,
+    rejectedCashStaleThreshold: 10
 }
 
 let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
@@ -32,6 +33,9 @@ class Team {
     public cash: number = 0;
     protected respawnTimer: SuggestTimer | null = null;
     protected deposit: Deposit | null = null;
+
+    private cashDraggingConsensus = new DraggingConsensus(0, 30, 5, 15);
+    private rejectedCashUpdates = 0;
 
     public mightBeDepositing = false;
 
@@ -57,13 +61,36 @@ class Team {
         const reductionOnly = this.cash * RULES.teamKillPenalty;
         const validReduction = reductionOnly === amount;
 
-        if (validDepositAcc || validReduction || validAccumulation || validAccWithReduction) {
+        // TODO need a mechanism to "approve" of getting their first cash in hand, ignore $0 up until then.
+        //  once the initial zero is overcome, we should reject $0
+
+        if (amount > 0 && (validDepositAcc || validReduction || validAccumulation || validAccWithReduction)) {
+            console.warn(`Accepted cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
             this.cash = amount;
+
+            this.cashDraggingConsensus.flush();
+            this.rejectedCashUpdates = 0;
         } else {
-            // TODO use known deposits to solve if a deposit is present
+            this.rejectedCashUpdates++;
+
+            // Strange updates suggest a deposit
             this.mightBeDepositing = true;
 
-            console.warn(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
+            if (amount > 0) {
+                console.error(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
+            } else {
+                console.error(`Rejected cash value [${this.name}]: ${amount} (${this.cashDraggingConsensus.lastStable})`);
+            }
+
+            // If the current count is stale, try a stable value from the dragging consensus
+            const potentialStable = this.cashDraggingConsensus.stableConsensus(amount)
+            if (this.rejectedCashUpdates > SETTINGS.rejectedCashStaleThreshold) {
+                if (potentialStable) {
+                    this.cash = potentialStable.value
+
+                    console.warn(`Stale cash value possible for [${this.name}], falling back on dragging consensus with frequency ${potentialStable.frequency}`);
+                }
+            }
         }
     }
 
