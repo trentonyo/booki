@@ -1,6 +1,8 @@
 import {ColorsAndThresholds, LandMarkColor, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
+import Color from "colorjs.io";
+import set = Color.set;
 
 /**
  * Set up the page
@@ -9,9 +11,10 @@ let teamSlots = document.getElementById("team_slots");
 
 type Ranks = "first" | "second" | "third" | "fourth";
 type DepositDenominations = 7000 | 10000 | 15000;
+let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
 
 const RULES = {
-    depositAmounts: [7000, 10000, 15000],
+    depositAmounts: [7000, 10000, 15000, /* doubled up */ 14000, 17000, 20000, 22000, 25000, 30000],
     /*                     kill        3kills                 */
     /*                     |     cbox  |     DEPOSIT STARTED  */
     /*                     |     |     |     1st   2nd   3rd  */
@@ -27,7 +30,64 @@ const SETTINGS = {
     rejectedCashStaleThreshold: 10
 }
 
-let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
+/**
+ * Takes "predictably wrong" values and coerces them into potentially correct values
+ * @param cash
+ */
+function extractStrangeCashValue(cash: number) {
+    /*
+    8500+14000 = 85005100
+     */
+    const cashStr = cash.toString();
+
+    /**
+     * Case: "+$" is interpreted as "45"
+     * 
+     * Examples:
+     *   - $8500+$7000 = 8500457095
+     *   - $8500+$7000 = 3500457095
+     */
+    const pCase = {
+        cash: 0,
+        deposit: 0
+    }
+    const ppCase = {
+        cash: 0,
+        deposit: 0
+    }
+    
+    const [pCashStr, pDepositStr] = cashStr.split("45", 2);
+    const pCash = parseInt(pCashStr, 10);
+    const pDeposit = parseInt(pDepositStr, 10);
+    
+    // pCash might be valid
+    pCase.cash = pCash;
+    ppCase.cash = pCash;
+
+    // pDeposit may be malformed, needs to be tested with a margin of error against deposit amounts
+    const potentialDepositThreshold = 100;
+    for (const validDeposit of RULES.depositAmounts) {
+        // Potential deposit is close to a valid deposit, assumes the largest
+        if (Math.abs(pDeposit - validDeposit) <= potentialDepositThreshold) {
+            pCase.deposit = validDeposit;
+        }
+    }
+
+    // pDeposit may be very malformed, see if it's a truncated version of deposit amounts
+    ppCase.deposit = 0;
+    for (const validDeposit of RULES.depositAmounts) {
+        const validDepositStr = validDeposit.toString(10);
+
+        if (
+            pDepositStr.substring(0,1) == validDepositStr.substring(0,1)
+            || pDepositStr.substring(0,2) == validDepositStr.substring(0,2)
+        ) {
+            ppCase.deposit = validDeposit;
+        }
+    }
+
+    return [pCase, ppCase];
+}
 
 class Team {
     private hasMoreThanZero = false;
@@ -84,7 +144,10 @@ class Team {
             (amount > 0 || (amount === 0 && !this.hasMoreThanZero))
             && (validDepositAcc || validReduction || validAccumulation || validAccWithReduction)
         ) {
-            // console.warn(`Accepted cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
+            if (amount > 1.2 * this.cash) {
+                console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`)
+            }
+
             this.setCash(amount);
             if (amount > 0) {
                 this.hasMoreThanZero = true;
@@ -458,7 +521,20 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             if (!isNaN(cash) && cash >= 0) {
                 sortedTeams[index].updateCash(cash);
             } else {
-                console.warn(`Invalid cash value [${cashLandMark.name}]: ${cashLandMark.VALUE}`);
+                let warning = `Invalid cash value [${cashLandMark.name}]: ${cashLandMark.VALUE}`;
+                const [pCash, ppCash] = extractStrangeCashValue(cash);
+
+                if (pCash.cash > 0) {
+                    warning = `Strange cash value [${cashLandMark.name}, ${cashLandMark.VALUE}]: ${pCash.cash} (deposit: ${pCash.deposit})`
+                    sortedTeams[index].updateCash(pCash.cash);
+                }
+
+                if (ppCash.cash > 0) {
+                    warning = `Very strange cash value [${cashLandMark.name}, ${cashLandMark.VALUE}]: ${pCash.cash} (deposit: ${pCash.deposit})`
+                    sortedTeams[index].updateCash(pCash.cash);
+                }
+
+                console.warn(warning);
             }
         }
     })
