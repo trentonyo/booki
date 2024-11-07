@@ -30,63 +30,52 @@ const SETTINGS = {
     rejectedCashStaleThreshold: 10
 }
 
+function commonPrefixLength(str1: string, str2: string): number {
+    let i = 0;
+    while (i < str1.length && i < str2.length && str1[i] === str2[i]) {
+        i++;
+    }
+    return i;
+}
+
 /**
  * Takes "predictably wrong" values and coerces them into potentially correct values
- * @param cash
+ * @param ocrValue
  */
-function extractStrangeCashValue(cash: number) {
-    /*
-    8500+14000 = 85005100
-     */
-    const cashStr = cash.toString();
+function correctOcrValue(ocrValue: string): string | null {
+    // Simple replacements
+    ocrValue = ocrValue.replace(/[45]{2,}/g, "+$");
 
-    /**
-     * Case: "+$" is interpreted as "45"
-     * 
-     * Examples:
-     *   - $8500+$7000 = 8500457095
-     *   - $8500+$7000 = 3500457095
-     */
-    const pCase = {
-        cash: 0,
-        deposit: 0
-    }
-    const ppCase = {
-        cash: 0,
-        deposit: 0
-    }
-    
-    const [pCashStr, pDepositStr] = cashStr.split("45", 2);
-    const pCash = parseInt(pCashStr, 10);
-    const pDeposit = parseInt(pDepositStr, 10);
-    
-    // pCash might be valid
-    pCase.cash = pCash;
-    ppCase.cash = pCash;
+    const [part1, part2] = ocrValue.split("+");
 
-    // pDeposit may be malformed, needs to be tested with a margin of error against deposit amounts
-    const potentialDepositThreshold = 100;
+    if (!part1 || !part2) {
+        return null;
+    }
+
+    const firstValue = parseInt(part1.slice(1), 10); // Remove the leading $
+
+    let secondValue = parseInt(part2, 10);
+    let correctedSecondValue = RULES.depositAmounts[0];
+    let maxPrefixLength = 0;
+
     for (const validDeposit of RULES.depositAmounts) {
-        // Potential deposit is close to a valid deposit, assumes the largest
-        if (Math.abs(pDeposit - validDeposit) <= potentialDepositThreshold) {
-            pCase.deposit = validDeposit;
+        const currentPrefixLength = commonPrefixLength(part2, validDeposit.toString());
+        if (currentPrefixLength > maxPrefixLength) {
+            maxPrefixLength = currentPrefixLength;
+            correctedSecondValue = validDeposit;
         }
     }
 
-    // pDeposit may be very malformed, see if it's a truncated version of deposit amounts
-    ppCase.deposit = 0;
-    for (const validDeposit of RULES.depositAmounts) {
-        const validDepositStr = validDeposit.toString(10);
-
-        if (
-            pDepositStr.substring(0,1) == validDepositStr.substring(0,1)
-            || pDepositStr.substring(0,2) == validDepositStr.substring(0,2)
-        ) {
-            ppCase.deposit = validDeposit;
-        }
+    // Fallback to numerical comparison if no suitable prefix match found
+    if (maxPrefixLength === 0 && !RULES.depositAmounts.includes(secondValue)) {
+        correctedSecondValue = RULES.depositAmounts.reduce((prev, curr) =>
+            Math.abs(curr - secondValue) < Math.abs(prev - secondValue) ? curr : prev
+        );
+    } else {
+        secondValue = correctedSecondValue;
     }
 
-    return [pCase, ppCase];
+    return `$${firstValue}+$${correctedSecondValue}`;
 }
 
 class Team {
@@ -113,8 +102,6 @@ class Team {
     }
 
     public updateCash(amount: number) {
-        // TODO Can also introduce an "uncertainty" margin by which we allow values outside those parameters
-        //  and a "staleness" parameter where we are likely to take a new value if we haven't had an approved one in a while
         const validDepositAcc = RULES.depositAmounts.some(accumulationAmount => amount % accumulationAmount === 0);
         const validAccumulation = RULES.accumulateCashAmounts.some(accumulationAmount => amount % accumulationAmount === 0);
         const validAccWithReduction = RULES.accumulateCashAmounts.some(accumulationAmount => amount % (accumulationAmount * RULES.teamKillPenalty) === 0);
@@ -145,13 +132,18 @@ class Team {
             && (validDepositAcc || validReduction || validAccumulation || validAccWithReduction)
         ) {
             if (amount > 1.2 * this.cash) {
-                console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`)
+                // console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`) // TODO Debug
             }
 
-            this.setCash(amount);
+            /**
+             * If this team's cash was successfully updated by this amount, return true
+             */
             if (amount > 0) {
                 this.hasMoreThanZero = true;
             }
+            this.setCash(amount);
+            return true;
+
         } else {
             // Rejected cash updates introduce uncertainty to this.cash
             this.rejectedCashUpdates++;
@@ -160,9 +152,9 @@ class Team {
             this.mightBeDepositing = true;
 
             if (amount > 0) {
-                console.error(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`);
+                // console.error(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`); // TODO Debug
             } else {
-                console.error(`Rejected cash value [${this.name}]: ${amount} (${this.cashDraggingConsensus.lastStable})`);
+                // console.error(`Rejected cash value [${this.name}]: ${amount} (${this.cashDraggingConsensus.lastStable})`); // TODO Debug
                 this.hasMoreThanZero = false;
             }
 
@@ -170,12 +162,14 @@ class Team {
             const potentialStable = this.cashDraggingConsensus.stableConsensus(amount)
             if (this.rejectedCashUpdates > SETTINGS.rejectedCashStaleThreshold) {
                 if (potentialStable) {
-                    this.setCash(potentialStable.value)
-
                     console.warn(`Stale cash value possible for [${this.name}], falling back on dragging consensus with frequency ${potentialStable.frequency}`);
+                    this.setCash(potentialStable.value)
                 }
             }
         }
+
+        // If the cash was not updated specifically by the amount (either not updated at all or updated by something else e.g. draggingConsensus)
+        return false;
     }
 
     private setCash(amount: number) {
@@ -515,26 +509,31 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         const cashLandMark = processedGameState.gameState.find(landmark => landmark.name === landmarkName) as LandMarkOCR;
 
         if (cashLandMark.VALUE) {
-            const nominal = cashLandMark.VALUE.substring(1);
-            const cash = parseInt(nominal, 10);
+            // Value includes a deposit
+            if (cashLandMark.VALUE.includes("+")) {
+                const [cash, deposit] = cashLandMark.VALUE.split("+", 2);
+                const cashValue = parseInt(cash.substring(1), 10);
+                const depositValue = parseInt(deposit.substring(1), 10);
 
-            if (!isNaN(cash) && cash >= 0) {
-                sortedTeams[index].updateCash(cash);
+                console.warn(`Detected deposit of ${depositValue} for ${rank.padStart(10, " ")} with ${cashValue} cash [${cashLandMark.VALUE}]`)
+            }
+            // Value is cash only
+            else if (cashLandMark.VALUE.includes("$")) {
+                const nominal = cashLandMark.VALUE.substring(1);
+                const cash = parseInt(nominal, 10);
+
+                let success = false;
+                if (!isNaN(cash) && cash >= 0) {
+                    success = sortedTeams[index].updateCash(cash);
+                }
+
+                if (!success) {
+                    const potential = correctOcrValue(cashLandMark.VALUE);
+                    console.warn(`Corrected value for ${rank.padStart(10, " ")}: ${cashLandMark.VALUE} -> ${potential}`)
+
+                }
             } else {
-                let warning = `Invalid cash value [${cashLandMark.name}]: ${cashLandMark.VALUE}`;
-                const [pCash, ppCash] = extractStrangeCashValue(cash);
-
-                if (pCash.cash > 0) {
-                    warning = `Strange cash value [${cashLandMark.name}, ${cashLandMark.VALUE}]: ${pCash.cash} (deposit: ${pCash.deposit})`
-                    sortedTeams[index].updateCash(pCash.cash);
-                }
-
-                if (ppCash.cash > 0) {
-                    warning = `Very strange cash value [${cashLandMark.name}, ${cashLandMark.VALUE}]: ${pCash.cash} (deposit: ${pCash.deposit})`
-                    sortedTeams[index].updateCash(pCash.cash);
-                }
-
-                console.warn(warning);
+                console.error(`Unrecognized value for ${landmarkName}: ${cashLandMark.VALUE}`)
             }
         }
     })

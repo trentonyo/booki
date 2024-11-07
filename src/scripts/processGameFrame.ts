@@ -1,6 +1,6 @@
 import sharp, {Color, Region} from "sharp";
 import {writeFileSync} from 'fs';
-import {colorDistance, distanceAlgorithms, divideIntoRegions, rgbToHex} from "./colorUtil";
+import {colorDistance, distanceAlgorithms, rgbToHex} from "./colorUtil";
 import {getOCRWorkerPool} from "./workOCR";
 
 async function extractColorFromImage(imageBuffer: Buffer, region: Region) {
@@ -247,8 +247,29 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     return {name: landMark.name, text: JSON.stringify(output)};
 }
 
+// function debugWriteImage(imageBuffer: Buffer, landMark: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA), stateModel: StateModel, step: number) {
+function debugWriteImage(imageBuffer: Buffer, landMark: LandMarkOCR, stateModel: StateModel, step: number) {
+    if (
+        ["score_firstCash", "score_secondCash", "score_thirdCash", "score_fourthCash"].includes(landMark.name)
+        && landMark.VALUE
+        && landMark.VALUE.length > 6
+    ) {
+        const regex = new RegExp(landMark.validRegex!);
+        const result = regex.exec(landMark.VALUE.trim());
+
+        if (result) {
+            const nameWords = stateModel.constraints.displayName.split(" ");
+            const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
+                .toUpperCase()
+                .replace(/[^A-Z]+/g, '');
+            writeFileSync(`.debug/RAW_${encodedName}_${landMark.name}_${step}_${result[0]}.png`, imageBuffer, {flag: 'w'});
+        }
+    }
+}
+
 // Step allows for spreading recognize jobs out per landmark
 let step = 0;
+
 export async function processGameFrame(dataURL: string, stateModel: StateModel, minX = 0, minY = 0) {
     const rawImageBuffer = Buffer.from(dataURL.split(',')[1], 'base64');
     const sharpProc = sharp(rawImageBuffer)
@@ -259,26 +280,6 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
     }
     const imageBuffer = await sharpProc.toBuffer();
 
-    // Save the image buffer to disk TODO Debug
-    // /*
-    const encodedName = stateModel.constraints.displayName
-        .toLowerCase()
-        .replace(/\s+/g, '_')
-        .replace(/[^a-z]+/g, '');
-    writeFileSync(`.debug/${encodedName}_RAW.png`, rawImageBuffer, {flag: 'w'});
-    // */
-
-    /*
-
-      "validRegex": "^[12]?[0-9]$",
-
-      "validRegex": "^[12]?[0-9]$",
-
-      "validRegex": "^[12]?[0-9]$",
-
-      "validRegex": "^[12]?[0-9]$",
-     */
-    
     // The output is a stateModel that potentially has VALUE defined for any number of landmarks
     let output = {...stateModel};
 
@@ -312,6 +313,11 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
             const matchingLandMark = output.gameState.find(landMark => landMark.name === landMarkNameTextPair.name);
             if (matchingLandMark) {
                 matchingLandMark.VALUE = landMarkNameTextPair.text;
+
+                // TODO debug
+                if (matchingLandMark.type === "ocr" && matchingLandMark.validRegex) {
+                    // debugWriteImage(rawImageBuffer, matchingLandMark, stateModel, step);
+                }
             }
         }
     }
