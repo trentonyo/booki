@@ -44,38 +44,54 @@ function commonPrefixLength(str1: string, str2: string): number {
  */
 function correctOcrValue(ocrValue: string): string | null {
     // Simple replacements
-    ocrValue = ocrValue.replace(/[45]{2,}/g, "+$");
+    const replacements = [
+        /8/g,
+        /[45]{2,}/g
+    ]
 
-    const [part1, part2] = ocrValue.split("+");
+    const solutions = replacements.map(r => {
+        ocrValue = ocrValue.replace(r, "+$");
 
-    if (!part1 || !part2) {
-        return null;
-    }
+        const [part1, part2] = ocrValue.split("+");
 
-    const firstValue = parseInt(part1.slice(1), 10); // Remove the leading $
+        if (!part1 || !part2) {
+            return null;
+        }
 
-    let secondValue = parseInt(part2, 10);
-    let correctedSecondValue = RULES.depositAmounts[0];
+        const firstValue = parseInt(part1.slice(1), 10); // Remove the leading $
+        const secondValue = parseInt(part2.slice(1), 10); // Remove the leading $
+        const correctedSecondValue = parseDeposit(secondValue)
+
+        return `$${firstValue}+$${correctedSecondValue}`;
+    })
+
+    let output = null;
+    solutions.forEach(solution => {
+        // Just takes the last solution, if applicable TODO might choose more intelligently
+        if (solution) {
+            output = solution;
+        }
+    })
+
+    return output;
+}
+
+function parseDeposit(potential: number) {
+    const potentialStr = potential.toString();
+    let output = RULES.depositAmounts[0]; // Default to first deposit amount arbitrarily
     let maxPrefixLength = 0;
 
+    // Compare the leftmost digits of the deposit to valid deposits and choose that valid deposit which
+    //  the potential deposit most closely matches
     for (const validDeposit of RULES.depositAmounts) {
-        const currentPrefixLength = commonPrefixLength(part2, validDeposit.toString());
+        const currentPrefixLength = commonPrefixLength(potentialStr, validDeposit.toString());
         if (currentPrefixLength > maxPrefixLength) {
             maxPrefixLength = currentPrefixLength;
-            correctedSecondValue = validDeposit;
+            output = validDeposit;
         }
     }
 
-    // Fallback to numerical comparison if no suitable prefix match found
-    if (maxPrefixLength === 0 && !RULES.depositAmounts.includes(secondValue)) {
-        correctedSecondValue = RULES.depositAmounts.reduce((prev, curr) =>
-            Math.abs(curr - secondValue) < Math.abs(prev - secondValue) ? curr : prev
-        );
-    } else {
-        secondValue = correctedSecondValue;
-    }
-
-    return `$${firstValue}+$${correctedSecondValue}`;
+    return output;
 }
 
 class Team {
@@ -101,7 +117,7 @@ class Team {
         return this.respawnColor;
     }
 
-    public updateCash(amount: number) {
+    public updateCash(amount: number, force = false) {
         const validDepositAcc = RULES.depositAmounts.some(accumulationAmount => amount % accumulationAmount === 0);
         const validAccumulation = RULES.accumulateCashAmounts.some(accumulationAmount => amount % accumulationAmount === 0);
         const validAccWithReduction = RULES.accumulateCashAmounts.some(accumulationAmount => amount % (accumulationAmount * RULES.teamKillPenalty) === 0);
@@ -128,8 +144,10 @@ class Team {
          *   and fall back on the dragging consensus value made up of the most recent stretch of rejected amounts.
          */
         if (
-            (amount > 0 || (amount === 0 && !this.hasMoreThanZero))
-            && (validDepositAcc || validReduction || validAccumulation || validAccWithReduction)
+            (amount > 0 || (amount === 0 && !this.hasMoreThanZero))  // Validate nonzero update OR persisting zero in early game
+            && (validDepositAcc || validAccumulation || validAccWithReduction)  // Validate incremented by valid amount
+            && (amount < this.cash ? validReduction : true)  // If the amount is a reduction, validate the reduction amount (ignoring if an increment)
+            || (force)
         ) {
             if (amount > 1.2 * this.cash) {
                 // console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`) // TODO Debug
@@ -151,12 +169,10 @@ class Team {
             // Strange updates suggest a deposit
             this.mightBeDepositing = true;
 
-            if (amount > 0) {
-                // console.error(`Rejected cash value [${this.name}]: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`); // TODO Debug
-            } else {
-                // console.error(`Rejected cash value [${this.name}]: ${amount} (${this.cashDraggingConsensus.lastStable})`); // TODO Debug
-                this.hasMoreThanZero = false;
-            }
+            // TODO I don't understand how this is useful, it seems like it defeats the purpose
+            // if (amount <= 0)  {
+            //     this.hasMoreThanZero = false;
+            // }
 
             // If the current count is stale, try a stable value from the dragging consensus
             const potentialStable = this.cashDraggingConsensus.stableConsensus(amount)
@@ -176,6 +192,28 @@ class Team {
         this.cash = amount
         this.cashDraggingConsensus.flush();
         this.rejectedCashUpdates = 0;
+    }
+
+    public updateCashAndDeposit(cash: number, deposit: number) {
+        // These corrected and extracted strings tend to be pretty accurate, and can
+        // correct a stale cash value. They are a rarer occurrence that typically coincides
+        // with stale cash values. For this reason, we force an update.
+        this.updateCash(cash, true);
+
+        // This deposit handling is pretty accurate, and also is the only way to detect
+        // doubled-up cashouts.
+        const parsedDeposit = parseDeposit(deposit)
+
+        // If this deposit matches the deposits that this team already has, then continue
+
+        // If this deposit matches a deposit that ANOTHER TEAM already has, mark that deposit as
+        //  having potentially been stolen by THIS team
+
+        // If this deposit is a MULTIPLE and there is only one deposit started, start another and assign it to this team
+
+        // If this deposit is invalid, ignore
+        //  - a denomination that is invalid
+        //  - a denomination that has no remaining instances left
     }
 
     public assignRespawnTimer(timer: SuggestTimer) {
@@ -210,7 +248,7 @@ class Team {
         element.innerHTML = `
             <div class="team-name">${this.name}</div>
             <div class="team-cash">${this.cash}</div>
-            <div class="team-deposit-timer">${(this.deposit) ? `deposit: ${this.deposit.remainingSeconds(gameTimer.remaining!)}s` : "--"}</div>
+            <div class="team-deposit-timer">${(this.deposit && this.deposit.remainingSeconds()) ? `deposit: ${this.deposit.remainingSeconds()}s` : "--"}</div>
             <div class="team-respawn-timer">${respawnStr}</div>
         `;
 
@@ -220,27 +258,44 @@ class Team {
 
 class Deposit {
     private readonly duration: number;
-    constructor(public value: DepositDenominations, protected timeRemainingAtStart: number, controllingTeam: Team | null = null, protected progressAtStart: number = 0) {
-        const t = timeRemainingAtStart;
+    private timer: SuggestTimer;
+
+    constructor(public value: DepositDenominations, protected gameTimeRemainingAtStart: number, controllingTeam: Team | null = null, protected progressAtStart: number = 0) {
+        const t = gameTimeRemainingAtStart;
 
         if (t < 1) {
             this.duration = 60;
-        } else
-        if (t <= 30) {
+        } else if (t <= 30) {
             this.duration = 90;
-        } else
-        if (t <= 60) {
+        } else if (t <= 60) {
             this.duration = 120;
-        }
-        else {
+        } else {
             this.duration = 130;
         }
 
-        this.timeRemainingAtStart += Math.round(this.duration * progressAtStart)
+        // Having parsed the duration, we can backdate the time that was remaining when this deposit started
+        //  timeRemainingAtStart will not be used much further
+        this.gameTimeRemainingAtStart += Math.round(this.duration * progressAtStart)
+
+        // We track the progress of this deposit with a timer, backdated to the supposed start of this deposit (found above)
+        this.timer = new SuggestTimer(this.duration)
+
+        const startOfGameTime = gameTimer.startedAt!;
+        const startPoint = startOfGameTime + (RULES.lengthOfGame - this.gameTimeRemainingAtStart);
+        this.timer.start(startPoint)
     }
 
-    public remainingSeconds(timeRemaining: number) {
-        return this.duration - (this.timeRemainingAtStart - timeRemaining);
+    public remainingSeconds() {
+        if (this.timer.remaining) {
+            if( this.timer.remaining > 0) {
+                return this.timer.remaining;
+            } else {
+                this.timer.stop();
+                return null;
+            }
+        }
+
+        return null;
     }
 }
 
@@ -275,7 +330,7 @@ function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: 
             teamToPop = i;
         }
     }
-    return { closestTeam: teams[teamToPop], index: teamToPop };
+    return {closestTeam: teams[teamToPop], index: teamToPop};
 }
 
 const gameTimer = new SuggestTimer(RULES.lengthOfGame, true, 60);
@@ -291,6 +346,24 @@ const teamMightBeDepositing = [
     false
 ]
 
+function cashAndDeposit(str: string) {
+    // Validate string
+    const validateRegex = new RegExp(/^\$[0-9]+\+\$[0-9]+$/)
+    if (!validateRegex.test(str)) {
+        return null;
+    }
+
+    const [cashStr, depositStr] = str.split("+");
+
+    const cash = parseInt(cashStr.substring(1), 10)
+    const depositP = parseInt(depositStr.substring(1), 10)
+
+    // Correct deposit
+    const deposit = parseDeposit(depositP);
+
+    return {cash: cash, deposit: deposit};
+}
+
 export default function handleProcessedGameState(processedGameState: StateModel) {
     const ranks = ["first", "second", "third", "fourth"];
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
@@ -298,14 +371,14 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const colorRanks = ["color_first", "color_second", "color_third"];
 
     /**
-     * Sort out the ranks of the teams, check if any might be depositing
+     * Sort out the ranks of the teams, update teamMightBeDepositing list
      */
     let remainingTeams = teams;
 
     colorRanks.forEach(rank => {
         const referenceColor = processedGameState.gameState.find(landmark => landmark.name === rank)!.VALUE! as string;
 
-        const { closestTeam, index } = findClosestTeam(remainingTeams, referenceColor);
+        const {closestTeam, index} = findClosestTeam(remainingTeams, referenceColor);
         sortedTeams.push(closestTeam);
 
         try {
@@ -338,9 +411,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 break;
         }
 
-        if (team.mightBeDepositing) {
-            teamMightBeDepositing[i] = true;
-        }
+        teamMightBeDepositing[i] = team.mightBeDepositing;
     }
 
     /**
@@ -384,7 +455,6 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 progress += response["#CEC821"]
                 remaining += response["#877E0A"]
             }
-            // const readOut = document.getElementById(`captureProgress1_${rank}`)!;
 
             let tmpDA: DraggingAverage;
             let index: number;
@@ -441,7 +511,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 }
             }
 
-        } catch (e) {}
+        } catch (e) {
+        }
     })
 
     // If all two deposits are accounted for, then no other team might be depositing TODO this breaks if a team has both caps
@@ -454,7 +525,6 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     /**
      * Track the game timer
      */
-    // const gameTime = document.getElementById("game_timeRemaining")!;
     const gameTimeRemainingLandmark = processedGameState.gameState.find(landmark => landmark.name === "game_timeRemaining") as LandMarkOCR;
 
     if (gameTimeRemainingLandmark!.VALUE) {
@@ -467,9 +537,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
             // Use TimerSuggest
             gameTimer.suggest(remainingTime)
-        }
-        else if (!overTimeApplied)
-        {
+        } else if (!overTimeApplied) {
             const overTimeStrings = gameTimeRemainingLandmark!.VALUE.split("+", 2);
 
             if (overTimeStrings.length === 2) {
@@ -511,16 +579,16 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         if (cashLandMark.VALUE) {
             // Value includes a deposit
             if (cashLandMark.VALUE.includes("+")) {
-                const [cash, deposit] = cashLandMark.VALUE.split("+", 2);
-                const cashValue = parseInt(cash.substring(1), 10);
-                const depositValue = parseInt(deposit.substring(1), 10);
-
-                console.warn(`Detected deposit of ${depositValue} for ${rank.padStart(10, " ")} with ${cashValue} cash [${cashLandMark.VALUE}]`)
+                const extracted = cashAndDeposit(cashLandMark.VALUE)
+                if (extracted) {
+                    console.warn(`Detected deposit of ${extracted?.deposit} for ${rank.padStart(10, " ")} with ${extracted?.cash} cash [${cashLandMark.VALUE}]`)
+                    sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit);
+                }
             }
-            // Value is cash only
+            // Value is cash only MAY BE A CORRECTABLE OCR VALUE
             else if (cashLandMark.VALUE.includes("$")) {
                 const nominal = cashLandMark.VALUE.substring(1);
-                const cash = parseInt(nominal, 10);
+                let cash = parseInt(nominal, 10);
 
                 let success = false;
                 if (!isNaN(cash) && cash >= 0) {
@@ -529,7 +597,15 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
                 if (!success) {
                     const potential = correctOcrValue(cashLandMark.VALUE);
-                    console.warn(`Corrected value for ${rank.padStart(10, " ")}: ${cashLandMark.VALUE} -> ${potential}`)
+
+                    if (potential) {
+                        const extracted = cashAndDeposit(potential);
+
+                        if (extracted) {
+                            console.log(`Corrected and extracted CASH: ${extracted.cash} | DEPOSIT: ${extracted.deposit} (${potential})`);
+                            sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit);
+                        }
+                    }
 
                 }
             } else {

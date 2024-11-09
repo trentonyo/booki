@@ -110,7 +110,7 @@ export class DraggingConsensus<T> {
 
 export class SuggestTimer {
     private stableSuggestions = 0;
-    protected startedAt: number | null = null;
+    public startedAt: number | null = null;
 
     constructor(protected duration: number, protected started: boolean = true, private suggestionThreshold: number = 10, private stableSuggestionMinimum: number = 1) {
         // Start the timer
@@ -119,9 +119,18 @@ export class SuggestTimer {
         }
     }
 
-    public start() {
+    public start(startedAt: number | null = null) {
         this.started = true;
-        this.startedAt = Math.round(Date.now() / 1000);
+        this.startedAt = startedAt ? startedAt : Math.round(Date.now() / 1000);
+    }
+
+    public stop(resetStability = true) {
+        this.started = false;
+        this.startedAt = null;
+
+        if (resetStability) {
+            this.stableSuggestions = 0;
+        }
     }
 
     public get stable() {
@@ -149,7 +158,7 @@ export class SuggestTimer {
 
     public get remaining() {
         // If the timer is stopped, the time remaining should be null
-        if (this.startedAt! < 0) {
+        if (this.startedAt! < 0 || !this.isStarted) {
             return null;
         }
 
@@ -160,13 +169,6 @@ export class SuggestTimer {
         this.startedAt! += addend;
     }
 
-    stop(resetStability = true) {
-        this.startedAt = null;
-
-        if (resetStability) {
-            this.stableSuggestions = 0;
-        }
-    }
 }
 
 export class PredictorBayesianTimeBased {
