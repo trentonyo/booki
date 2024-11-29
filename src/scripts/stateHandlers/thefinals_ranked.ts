@@ -11,7 +11,6 @@ let teamSlots = document.getElementById("team_slots");
 
 type Ranks = "first" | "second" | "third" | "fourth";
 type DepositDenominations = 7000 | 10000 | 15000;
-let remainingDepositAmounts = [15000, 15000, 10000, 10000, 7000, 7000]
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000, /* doubled up -> */ 14000, 17000, 20000, 22000, 25000, 30000],
@@ -78,7 +77,7 @@ function correctOcrValue(ocrValue: string): string | null {
 
 function parseDeposit(potential: number) {
     const potentialStr = potential.toString();
-    let output = RULES.depositAmounts[0]; // Default to first deposit amount arbitrarily
+    let output = RULES.depositAmounts[0]; // Default to first deposit amount (arbitrarily)
     let maxPrefixLength = 0;
 
     // Compare the leftmost digits of the deposit to valid deposits and choose that valid deposit which
@@ -103,6 +102,7 @@ class Team {
     private cashDraggingConsensus = new DraggingConsensus(0, 30, 5, 15);
     private rejectedCashUpdates = 0;
 
+    public draggingCapture = new DraggingAverage();
     public mightBeDepositing = false;
 
     constructor(protected color: string, protected respawnColor: string, public name: string, public rank: Ranks) {
@@ -204,6 +204,7 @@ class Team {
         // doubled-up cashouts.
         const parsedDeposit = parseDeposit(deposit)
 
+        // TODO all of this should occur in DepositPool
         // If this deposit matches the deposits that this team already has, then continue
 
         // If this deposit matches a deposit that ANOTHER TEAM already has, mark that deposit as
@@ -226,6 +227,10 @@ class Team {
 
     public get isDepositing() {
         return this.deposit !== null;
+    }
+
+    public get getDeposit() {
+        return this.deposit;
     }
 
     public generateElement() {
@@ -299,17 +304,107 @@ class Deposit {
     }
 }
 
+class DepositPool {
+    private remainingDeposits: number[] = [15000, 15000, 10000, 10000, 7000, 7000];
+    private startedDeposits: number[] = []
+
+    private sortedTeams: Team[] = [];
+
+    public peek() {
+        return this.remainingDeposits[this.remainingDeposits.length - 1];
+    }
+
+    public pop() {
+        const last = this.remainingDeposits.pop();
+        if (last) {
+            this.startedDeposits.push(last);
+        }
+        return last;
+    }
+
+    public rollback() {
+        const last = this.startedDeposits.pop();
+        if (last) {
+            this.remainingDeposits.push(last);
+        }
+    }
+
+    public get depositsRemaining() {
+        return this.remainingDeposits.length;
+    }
+
+    public get depositsStarted() {
+        return this.startedDeposits.length;
+    }
+
+    public suggestDeposit(rank: Ranks, team: Team, amount?: number, progressBar?: number, ocrCorrected?: boolean) {
+        // If an amount was not given, we assume that there is non-numerical evidence of a deposit and will start to pop the next available
+        if (amount === undefined) {
+            amount = this.peek();
+        }
+
+        let checkMultiple = true;
+        // If this deposit matches the deposits that this team already has, then ignore/validate it
+        if (team.getDeposit && amount === team.getDeposit.value) {
+            checkMultiple = false;
+            // TODO validate it?
+        }
+
+        // If this deposit matches a deposit that ANOTHER TEAM already has, mark that deposit as
+        //  having potentially been stolen by THIS team
+        else {
+            const otherTeams = this.sortedTeams.filter(t => t !== team);
+            let matchingOtherTeam: Team | null = null;
+
+            for (let i = 0; i < otherTeams.length; i++) {
+                const otherTeam = otherTeams[i];
+                if (otherTeam.getDeposit && otherTeam.getDeposit.value === amount) {
+                    matchingOtherTeam = otherTeams[i];
+                    break;
+                }
+            }
+
+            if (matchingOtherTeam) {
+                checkMultiple = false;
+                // TODO deposit stolen?
+            }
+        }
+
+        // If this deposit is a MULTIPLE and there is only one deposit started, start another and assign it to this team
+        if (checkMultiple && this.depositsStarted === 1) {
+            const startedDeposit = this.startedDeposits[0];
+            const potentialDeposit = amount - startedDeposit;
+
+            if (potentialDeposit === this.peek()) {
+                // TODO merge a deposit of the amount potential
+            }
+        }
+
+        // If this deposit is invalid, ignore
+        //  - a denomination that is invalid
+        //  - a denomination that has no remaining instances left
+
+        /**
+        - An OCR corrected string might be right (if such a deposit remains)
+        - If an OCR corrected string reflects an increase from the initial deposit (~~~especially~~~ if by the amount of the next remaining cashbox)
+            - IN OTHER WORDS we missed the entire deposit, so it needs to be retroactively added
+        - Current method of seeing progress in the ColorCountA landmarks is not very reliable, needs to be combined with another metric
+        - If a team's cash hasn't been updated in a few seconds, that is usually an indicator of a cashout in progress
+         */
+    }
+
+    updateSortedTeams(sortedTeams: Team[]) {
+        this.sortedTeams = sortedTeams;
+    }
+}
+const DepositPoolSingleton = new DepositPool();
+
 const myTeam = new Team("#02B9F1", "#76B9D1", "Our Team", "first")
 const pinkTeam = new Team("#F736C7", "#DD8DC4", "Pink Team", "second")
 const orangeTeam = new Team("#FD8803", "#DFAB7F", "Orange Team", "third")
 const purpleTeam = new Team("#AA41FD", "#BD9CE4", "Purple Team", "fourth")
 
 const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
-
-const tmp_FirstDraggingCapture = new DraggingAverage();
-const tmp_SecondDraggingCapture = new DraggingAverage();
-const tmp_ThirdDraggingCapture = new DraggingAverage();
-const tmp_FourthDraggingCapture = new DraggingAverage();
 
 const RespawnTimers = [
     new SuggestTimer(RULES.respawnTime, false, 8, 2),
@@ -365,7 +460,7 @@ function cashAndDeposit(str: string) {
 }
 
 export default function handleProcessedGameState(processedGameState: StateModel) {
-    const ranks = ["first", "second", "third", "fourth"];
+    const ranks: ["first", "second", "third", "fourth"] = ["first", "second", "third", "fourth"];
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
     const colorRanks = ["color_first", "color_second", "color_third"];
@@ -413,6 +508,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
         teamMightBeDepositing[i] = team.mightBeDepositing;
     }
+    DepositPoolSingleton.updateSortedTeams(sortedTeams);
 
     /**
      * Track team respawns
@@ -437,13 +533,50 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         }
     })
 
-    /**
-     * Track the current deposits
+    /************************************
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     * DEPOSIT LOGIC
+     *
+    * Track the current deposits
      */
     const numTeamsDepositing = sortedTeams.filter(team => team.isDepositing).length;
 
     ranks.forEach(rank => {
         try {
+            /**
+             * Collect this team
+             */
+            let index: number;
+            switch (rank) {
+                case "first":
+                    index = 0;
+                    break;
+                case "second":
+                    index = 1;
+                    break;
+                case "third":
+                    index = 2;
+                    break;
+                case "fourth":
+                    index = 3;
+                    break;
+            }
+            const thisTeam = sortedTeams[index!];
+            let teamDraggingAverageForCapture: DraggingAverage = thisTeam.draggingCapture;
+
+            /**
+             * Collect the ColorCountA landmarks (there are three) for this team
+             */
             let progress = 0;
             let remaining = 0;
 
@@ -456,50 +589,35 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 remaining += response["#877E0A"]
             }
 
-            let tmpDA: DraggingAverage;
-            let index: number;
-            switch (rank) {
-                case "first":
-                    tmpDA = tmp_FirstDraggingCapture;
-                    index = 0;
-                    break;
-                case "second":
-                    tmpDA = tmp_SecondDraggingCapture;
-                    index = 1;
-                    break;
-                case "third":
-                    tmpDA = tmp_ThirdDraggingCapture;
-                    index = 2;
-                    break;
-                case "fourth":
-                    tmpDA = tmp_FourthDraggingCapture;
-                    index = 3;
-                    break;
-            }
-
             const percent = ((progress / (progress + remaining)) * 100);
-            let a;
+            let filteredPercent;
 
-            // The sum is for filtering out noisy yellow backgrounds
+            // The sum is for filtering out noisy yellow backgrounds, i.e. there aren't very many "hits" so the reading is not useful
             if (progress + remaining > 5 && !isNaN(percent)) {
                 // Filtering out ~100% reads, they seem to be noise
-                a = tmpDA!.average(percent >= 99 ? 0 : percent);
+                filteredPercent = teamDraggingAverageForCapture!.average(percent >= 99 ? 0 : percent);
             } else {
-                a = tmpDA!.average(0);
+                filteredPercent = teamDraggingAverageForCapture!.average(0);
             }
 
-            // If it's probable that the team in this position is capturing and there is significant evidence of a capture in progress
-            const thisTeam = sortedTeams[index!];
+            /**
+             * SUSS OUT DEPOSITS
+             *
+             * If it's probable that the team in this position is capturing and there is significant evidence of a capture in progress
+             */
             if (
                 !thisTeam.isDepositing
                 && numTeamsDepositing < 2
-                && (a >= 10 && thisTeam.mightBeDepositing)
+                && (filteredPercent >= 10 && thisTeam.mightBeDepositing)
             ) {
-                const denomination = remainingDepositAmounts.pop()
+                // Get the value of the next available deposit
+                // TODO deposit pool could keep track of time too? if we try to pop too soon then return nothing
+                //  also, the deposit pool should be the central entity that decides if and when a deposit is started, reallocated, or retroactively revoked
+                const denomination = DepositPoolSingleton.pop()
 
                 if (denomination) {
                     // Since the dragging average tends to be lower than the true value, we adjust it here
-                    const progress = (a) / 100;
+                    const progress = (filteredPercent) / 100;
                     const newDeposit = new Deposit(denomination as DepositDenominations, gameTimer.remaining!, thisTeam, progress);
 
                     console.log(`Started a deposit of ${denomination} for ${thisTeam.name} with ${gameTimer.remaining!}s remaining in the game! (a = ${progress}, ${numTeamsDepositing} teams depositing)`)
@@ -521,6 +639,22 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             team.mightBeDepositing = false;
         })
     }
+
+    /***********************************
+     * END DEPOSIT LOGIC
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     */
 
     /**
      * Track the game timer
@@ -582,7 +716,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 const extracted = cashAndDeposit(cashLandMark.VALUE)
                 if (extracted) {
                     console.warn(`Detected deposit of ${extracted?.deposit} for ${rank.padStart(10, " ")} with ${extracted?.cash} cash [${cashLandMark.VALUE}]`)
-                    sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit);
+                    sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit); // TODO ensure that this calls the deposit methods in DepositPool
                 }
             }
             // Value is cash only MAY BE A CORRECTABLE OCR VALUE
