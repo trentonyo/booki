@@ -13,7 +13,7 @@ type Ranks = "first" | "second" | "third" | "fourth";
 type DepositDenominations = 7000 | 10000 | 15000;
 
 const RULES = {
-    depositAmounts: [7000, 10000, 15000, /* doubled up */ 14000, 17000, 20000, 22000, 25000, 30000],
+    depositAmounts: [7000, 10000, 15000, /* doubled up -> */ 14000, 17000, 20000, 22000, 25000, 30000],
     /*                     kill        3kills                 */
     /*                     |     cbox  |     DEPOSIT STARTED  */
     /*                     |     |     |     1st   2nd   3rd  */
