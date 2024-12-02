@@ -149,9 +149,10 @@ class Team {
             && (amount < this.cash ? validReduction : true)  // If the amount is a reduction, validate the reduction amount (ignoring if an increment)
             || (force)
         ) {
-            if (amount > 1.2 * this.cash) {
-                // console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`) // TODO Debug
-            }
+            // TODO Debug
+            // if (amount > 1.2 * this.cash) {
+                // console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`)
+            // }
 
             /**
              * If this team's cash was successfully updated by this amount, return true
@@ -168,11 +169,6 @@ class Team {
 
             // Strange updates suggest a deposit
             this.mightBeDepositing = true;
-
-            // TODO I don't understand how this is useful, it seems like it defeats the purpose
-            // if (amount <= 0)  {
-            //     this.hasMoreThanZero = false;
-            // }
 
             // If the current count is stale, try a stable value from the dragging consensus
             const potentialStable = this.cashDraggingConsensus.stableConsensus(amount)
@@ -194,7 +190,7 @@ class Team {
         this.rejectedCashUpdates = 0;
     }
 
-    public updateCashAndDeposit(cash: number, deposit: number) {
+    public updateCashAndDeposit(cash: number, deposit: number, OCRCorrected = false) {
         // These corrected and extracted strings tend to be pretty accurate, and can
         // correct a stale cash value. They are a rarer occurrence that typically coincides
         // with stale cash values. For this reason, we force an update.
@@ -202,19 +198,9 @@ class Team {
 
         // This deposit handling is pretty accurate, and also is the only way to detect
         // doubled-up cashouts.
-        const parsedDeposit = parseDeposit(deposit)
+        // const parsedDeposit = parseDeposit(deposit)
 
-        // TODO all of this should occur in DepositPool
-        // If this deposit matches the deposits that this team already has, then continue
-
-        // If this deposit matches a deposit that ANOTHER TEAM already has, mark that deposit as
-        //  having potentially been stolen by THIS team
-
-        // If this deposit is a MULTIPLE and there is only one deposit started, start another and assign it to this team
-
-        // If this deposit is invalid, ignore
-        //  - a denomination that is invalid
-        //  - a denomination that has no remaining instances left
+        DepositPoolSingleton.suggestDeposit(this.rank, this, deposit, undefined, OCRCorrected);
     }
 
     public assignRespawnTimer(timer: SuggestTimer) {
@@ -222,7 +208,21 @@ class Team {
     }
 
     public assignDeposit(deposit: Deposit) {
+        if (this.deposit) {
+            console.warn("== Attempted to assign a deposit when this team already has a deposit.")
+            return false;
+        }
         this.deposit = deposit;
+        return true;
+    }
+
+    public mergeDeposit(amount: number) {
+        if (!this.deposit) {
+            console.warn("== Attempted to merge a deposit when this team does not have a deposit.")
+            return
+        }
+
+        this.deposit.mergeAmount(amount);
     }
 
     public get isDepositing() {
@@ -258,6 +258,27 @@ class Team {
         `;
 
         return element;
+    }
+
+    stealDepositFrom(matchingOtherTeam: Team) {
+        const deposit = matchingOtherTeam.deposit
+
+        if (!deposit) {
+            console.warn("== Attempted to steal a deposit from a team that does not have a deposit.")
+            return;
+        }
+
+        if (this.deposit) {
+            this.deposit.mergeAmount(deposit.value);
+        } else {
+            this.deposit = deposit;
+        }
+
+        matchingOtherTeam.deposit = null;
+    }
+
+    removeDeposit() {
+        this.deposit = null;
     }
 }
 
@@ -302,11 +323,20 @@ class Deposit {
 
         return null;
     }
+
+    mergeAmount(amount: number) {
+        this.value += amount;
+    }
 }
 
 class DepositPool {
     private remainingDeposits: number[] = [15000, 15000, 10000, 10000, 7000, 7000];
-    private startedDeposits: number[] = []
+
+    /**
+     * [deposit amount, time started (literally when popped from remaining deposits, not game time)]
+     * @private
+     */
+    private runningDeposits: [number, number][] = []
 
     private sortedTeams: Team[] = [];
 
@@ -315,17 +345,29 @@ class DepositPool {
     }
 
     public pop() {
+        if (this.runningDeposits.length === 2) {
+            console.warn("== Attempted to pop a new deposit when two are already running.")
+            return undefined;
+        } else {
+            const delayBetweenDeposits = 500;
+            if (this.depositsRunning > 0 &&
+                this.runningDeposits[this.runningDeposits.length - 1][1] + delayBetweenDeposits >= Date.now()) {
+                console.warn("== Attempted to pop a new deposit too soon after the previous one was popped.")
+                return undefined;
+            }
+        }
+
         const last = this.remainingDeposits.pop();
         if (last) {
-            this.startedDeposits.push(last);
+            this.runningDeposits.push([last, Date.now()]);
         }
         return last;
     }
 
     public rollback() {
-        const last = this.startedDeposits.pop();
+        const last = this.runningDeposits.pop();
         if (last) {
-            this.remainingDeposits.push(last);
+            this.remainingDeposits.push(last[0]);
         }
     }
 
@@ -333,8 +375,8 @@ class DepositPool {
         return this.remainingDeposits.length;
     }
 
-    public get depositsStarted() {
-        return this.startedDeposits.length;
+    public get depositsRunning() {
+        return this.runningDeposits.length;
     }
 
     public suggestDeposit(rank: Ranks, team: Team, amount?: number, progressBar?: number, ocrCorrected?: boolean) {
@@ -343,11 +385,15 @@ class DepositPool {
             amount = this.peek();
         }
 
+        let DEBUG = true;
+
         let checkMultiple = true;
         // If this deposit matches the deposits that this team already has, then ignore/validate it
         if (team.getDeposit && amount === team.getDeposit.value) {
             checkMultiple = false;
             // TODO validate it?
+            console.log(`💰MATCHING EXISTING DEPOSIT: ${team.name} with ${amount}`)
+            DEBUG = false // todo
         }
 
         // If this deposit matches a deposit that ANOTHER TEAM already has, mark that deposit as
@@ -366,20 +412,61 @@ class DepositPool {
 
             if (matchingOtherTeam) {
                 checkMultiple = false;
-                // TODO deposit stolen?
+                // TODO DONE deposit stolen?
+                console.log(`💰STOLEN FROM OTHER TEAM: ${team.name} stole  ${amount} from ${matchingOtherTeam.name}`)
+                DEBUG = false // todo
+                team.stealDepositFrom(matchingOtherTeam)
             }
         }
 
         // If this deposit is a MULTIPLE and there is only one deposit started, start another and assign it to this team
-        if (checkMultiple && this.depositsStarted === 1) {
-            const startedDeposit = this.startedDeposits[0];
+        if (checkMultiple && this.depositsRunning === 1) {
+            const startedDeposit = this.runningDeposits[0][0];
             const potentialDeposit = amount - startedDeposit;
 
-            if (potentialDeposit === this.peek()) {
-                // TODO merge a deposit of the amount potential
+            if (this.peek() && potentialDeposit === this.peek()) {
+                // TODO DONE merge a deposit of the amount potential
+                if (team.getDeposit) {
+                    const toMerge = this.pop();
+                    console.log(`💰MERGE A DEPOSIT OF THE AMOUNT: ${toMerge} for ${team.name}`)
+                    DEBUG = false // todo
+                    team.mergeDeposit(toMerge!)
+                }
             }
         }
 
+        // If this is a totally new deposit, add it
+        if (
+            this.depositsRunning < 2
+            && this.peek()
+            && amount === this.peek()
+        ) {
+            // TODO DONE start a new deposit of the amount
+            if (!team.getDeposit) {
+                const toStart = this.pop();
+                console.log(`💰NEW DEPOSIT OF THE AMOUNT: ${team.name} gets ${toStart}`)
+                DEBUG = false // todo
+                const newDeposit = new Deposit(toStart! as DepositDenominations, gameTimer.remaining!, team);
+                team.assignDeposit(newDeposit);
+            }
+        }
+
+        if (DEBUG) {
+            const topTwoSum = this.remainingDeposits
+                .slice(this.remainingDeposits.length - 3, this.remainingDeposits.length - 1)
+                .reduce((a, b) => a + b, 0);
+
+            if (topTwoSum === amount) {
+                const newDeposit = new Deposit(this.pop()! as DepositDenominations, gameTimer.remaining!, team);
+                team.assignDeposit(newDeposit);
+                team.mergeDeposit(this.pop()! as DepositDenominations);
+                console.log(`💰NEW DOUBLE DEPOSIT OF THE AMOUNT: ${team.name} gets ${topTwoSum}`)
+            } else {
+                console.warn(`💰UNCAUGHT SUGGESTION rank: ${rank} team: ${team.name} amount: ${amount} progressBar: ${progressBar} ocrCorrected: ${ocrCorrected}`)
+                console.warn("remainingDeposits", this.remainingDeposits)
+                console.warn("runningDeposits", this.runningDeposits)
+            }
+        }
         // If this deposit is invalid, ignore
         //  - a denomination that is invalid
         //  - a denomination that has no remaining instances left
@@ -396,7 +483,12 @@ class DepositPool {
     updateSortedTeams(sortedTeams: Team[]) {
         this.sortedTeams = sortedTeams;
     }
+
+    public finishDeposit() {
+        this.runningDeposits.pop()
+    }
 }
+
 const DepositPoolSingleton = new DepositPool();
 
 const myTeam = new Team("#02B9F1", "#76B9D1", "Our Team", "first")
@@ -548,6 +640,9 @@ export default function handleProcessedGameState(processedGameState: StateModel)
      * DEPOSIT LOGIC
      *
     * Track the current deposits
+     *
+     * TODO right now, instead of starting another deposit it is passed back and forth
+     *
      */
     const numTeamsDepositing = sortedTeams.filter(team => team.isDepositing).length;
 
@@ -611,29 +706,38 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 && (filteredPercent >= 10 && thisTeam.mightBeDepositing)
             ) {
                 // Get the value of the next available deposit
-                // TODO deposit pool could keep track of time too? if we try to pop too soon then return nothing
-                //  also, the deposit pool should be the central entity that decides if and when a deposit is started, reallocated, or retroactively revoked
-                const denomination = DepositPoolSingleton.pop()
+                const denomination = DepositPoolSingleton.peek()
 
                 if (denomination) {
                     // Since the dragging average tends to be lower than the true value, we adjust it here
                     const progress = (filteredPercent) / 100;
-                    const newDeposit = new Deposit(denomination as DepositDenominations, gameTimer.remaining!, thisTeam, progress);
-
-                    console.log(`Started a deposit of ${denomination} for ${thisTeam.name} with ${gameTimer.remaining!}s remaining in the game! (a = ${progress}, ${numTeamsDepositing} teams depositing)`)
+                    DepositPoolSingleton.suggestDeposit(rank, thisTeam, denomination, progress);
+                    // const newDeposit = new Deposit(denomination as DepositDenominations, gameTimer.remaining!, thisTeam, progress);
+                    //
+                    // console.log(`Started a deposit of ${denomination} for ${thisTeam.name} with ${gameTimer.remaining!}s remaining in the game! (a = ${progress}, ${numTeamsDepositing} teams depositing)`)
 
                     thisTeam.mightBeDepositing = false;
-                    thisTeam.assignDeposit(newDeposit);
+                    // thisTeam.assignDeposit(newDeposit);
                 } else {
                     console.error("No denomination left to make a deposit with!")
                 }
             }
 
+            /// Update Team logic
+            if (thisTeam.getDeposit &&
+                !thisTeam.getDeposit.remainingSeconds()
+            ) {
+                thisTeam.removeDeposit()
+                DepositPoolSingleton.finishDeposit();
+            }
+
         } catch (e) {
         }
+
     })
 
-    // If all two deposits are accounted for, then no other team might be depositing TODO this breaks if a team has both caps
+    // If all two deposits are accounted for, then no other team might be depositing
+    // TODO this should not be necessary once DepositPool is finished
     if (numTeamsDepositing === 2) {
         sortedTeams.forEach(team => {
             team.mightBeDepositing = false;
@@ -715,8 +819,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             if (cashLandMark.VALUE.includes("+")) {
                 const extracted = cashAndDeposit(cashLandMark.VALUE)
                 if (extracted) {
-                    console.warn(`Detected deposit of ${extracted?.deposit} for ${rank.padStart(10, " ")} with ${extracted?.cash} cash [${cashLandMark.VALUE}]`)
-                    sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit); // TODO ensure that this calls the deposit methods in DepositPool
+                    // console.warn(`Detected deposit of ${extracted?.deposit} for ${rank.padStart(10, " ")} with ${extracted?.cash} cash [${cashLandMark.VALUE}]`)
+                    sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit);
                 }
             }
             // Value is cash only MAY BE A CORRECTABLE OCR VALUE
@@ -736,8 +840,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                         const extracted = cashAndDeposit(potential);
 
                         if (extracted) {
-                            console.log(`Corrected and extracted CASH: ${extracted.cash} | DEPOSIT: ${extracted.deposit} (${potential})`);
-                            sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit);
+                            // console.log(`Corrected and extracted CASH: ${extracted.cash} | DEPOSIT: ${extracted.deposit} (${potential})`);
+                            sortedTeams[index].updateCashAndDeposit(extracted.cash, extracted.deposit, true);
                         }
                     }
 
