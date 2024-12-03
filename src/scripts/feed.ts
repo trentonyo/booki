@@ -1,6 +1,5 @@
 import {StateModel, LandMarkOCR} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
-import {colorDistance} from "./colorUtil";
 
 //  IMPORTANT! See /server.ts for stateModels
 const handlers: { [modelName: string]: (processedGameState: StateModel) => void } = {
@@ -124,7 +123,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                 try {
                     handlers[modelName](processedStateModel);
                 } catch (error) {
-                    console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
+                    console.warn(`Falling back to default handler because specialized script for ${modelName} could not be run:`, error);
                     handlers["default"](processedStateModel);
                 }
             })

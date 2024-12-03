@@ -11,6 +11,18 @@ let teamSlots = document.getElementById("team_slots");
 
 type Ranks = "first" | "second" | "third" | "fourth";
 type DepositDenominations = 7000 | 10000 | 15000;
+function r(rank: Ranks) {
+    switch (rank) {
+        case "first":
+            return 0
+        case "second":
+            return 1
+        case "third":
+            return 2
+        case "fourth":
+            return 3
+    }
+}
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000, /* doubled up -> */ 14000, 17000, 20000, 22000, 25000, 30000],
@@ -247,15 +259,20 @@ class Team {
             }
         }
 
+        let depositString = "--"
+        if (this.deposit && this.deposit.remainingSeconds()) {
+            depositString = `deposit: ${this.deposit.remainingSeconds()}s ($${this.deposit.value})`
+        }
+
         const element = document.createElement("div");
         element.classList.add("team");
         element.style.backgroundColor = this.color;
         element.innerHTML = `
             <div class="team-name">${this.name}</div>
             <div class="team-cash">${this.cash}</div>
-            <div class="team-deposit-timer">${(this.deposit && this.deposit.remainingSeconds()) ? `deposit: ${this.deposit.remainingSeconds()}s` : "--"}</div>
+            <div class="team-deposit-timer">${depositString}</div>
             <div class="team-respawn-timer">${respawnStr}</div>
-        `;
+        `; 
 
         return element;
     }
@@ -364,10 +381,11 @@ class DepositPool {
         return last;
     }
 
-    public rollback() {
+    public rollback(rank: Ranks) {
         const last = this.runningDeposits.pop();
         if (last) {
             this.remainingDeposits.push(last[0]);
+            this.sortedTeams[r(rank)].removeDeposit();
         }
     }
 
@@ -385,7 +403,7 @@ class DepositPool {
             amount = this.peek();
         }
 
-        let DEBUG = true;
+        let uncaughtDeposit = true;
 
         let checkMultiple = true;
         // If this deposit matches the deposits that this team already has, then ignore/validate it
@@ -393,7 +411,7 @@ class DepositPool {
             checkMultiple = false;
             // TODO validate it?
             console.log(`💰MATCHING EXISTING DEPOSIT: ${team.name} with ${amount}`)
-            DEBUG = false // todo
+            uncaughtDeposit = false
         }
 
         // If this deposit matches a deposit that ANOTHER TEAM already has, mark that deposit as
@@ -410,12 +428,21 @@ class DepositPool {
                 }
             }
 
-            if (matchingOtherTeam) {
+            // If this amount matches another team's deposit
+            //  AND there is not another available cashbox of this amount, then it's a steal
+            if (matchingOtherTeam && !this.remainingDeposits.includes(amount)) {
                 checkMultiple = false;
                 // TODO DONE deposit stolen?
                 console.log(`💰STOLEN FROM OTHER TEAM: ${team.name} stole  ${amount} from ${matchingOtherTeam.name}`)
-                DEBUG = false // todo
+                uncaughtDeposit = false
                 team.stealDepositFrom(matchingOtherTeam)
+            } else if (this.remainingDeposits.includes(amount)) {
+                // TODO DONE new deposit of same denomination
+                const toStart = this.pop();
+                console.log(`💰NEW SIMILAR DEPOSIT OF THE AMOUNT: ${team.name} gets ${toStart}`)
+                uncaughtDeposit = false
+                const newDeposit = new Deposit(toStart! as DepositDenominations, gameTimer.remaining!, team);
+                team.assignDeposit(newDeposit);
             }
         }
 
@@ -429,7 +456,7 @@ class DepositPool {
                 if (team.getDeposit) {
                     const toMerge = this.pop();
                     console.log(`💰MERGE A DEPOSIT OF THE AMOUNT: ${toMerge} for ${team.name}`)
-                    DEBUG = false // todo
+                    uncaughtDeposit = false
                     team.mergeDeposit(toMerge!)
                 }
             }
@@ -445,13 +472,13 @@ class DepositPool {
             if (!team.getDeposit) {
                 const toStart = this.pop();
                 console.log(`💰NEW DEPOSIT OF THE AMOUNT: ${team.name} gets ${toStart}`)
-                DEBUG = false // todo
+                uncaughtDeposit = false
                 const newDeposit = new Deposit(toStart! as DepositDenominations, gameTimer.remaining!, team);
                 team.assignDeposit(newDeposit);
             }
         }
 
-        if (DEBUG) {
+        if (uncaughtDeposit) {
             const topTwoSum = this.remainingDeposits
                 .slice(this.remainingDeposits.length - 3, this.remainingDeposits.length - 1)
                 .reduce((a, b) => a + b, 0);
@@ -462,7 +489,7 @@ class DepositPool {
                 team.mergeDeposit(this.pop()! as DepositDenominations);
                 console.log(`💰NEW DOUBLE DEPOSIT OF THE AMOUNT: ${team.name} gets ${topTwoSum}`)
             } else {
-                console.warn(`💰UNCAUGHT SUGGESTION rank: ${rank} team: ${team.name} amount: ${amount} progressBar: ${progressBar} ocrCorrected: ${ocrCorrected}`)
+                console.warn(`💰UNCAUGHT SUGGESTION rank: ${rank} team: ${team.name} amount: ${amount} progressBar: ${progressBar} ocrCorrected: ${ocrCorrected} topTwoSum: ${topTwoSum}`)
                 console.warn("remainingDeposits", this.remainingDeposits)
                 console.warn("runningDeposits", this.runningDeposits)
             }
@@ -490,6 +517,9 @@ class DepositPool {
 }
 
 const DepositPoolSingleton = new DepositPool();
+export function rollbackLastDeposit(rank: Ranks) {
+    DepositPoolSingleton.rollback(rank)
+}
 
 const myTeam = new Team("#02B9F1", "#76B9D1", "Our Team", "first")
 const pinkTeam = new Team("#F736C7", "#DD8DC4", "Pink Team", "second")
