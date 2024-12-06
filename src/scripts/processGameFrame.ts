@@ -85,6 +85,7 @@ type Constraints = {
 export type StateModel = {
     constraints: Constraints;
     gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA)[];
+    inputs?: { [key: string]: any }
 };
 
 /****************

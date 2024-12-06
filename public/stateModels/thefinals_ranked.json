@@ -234,5 +234,9 @@
       "charMask": ":+1234567890",
       "validRegex": "^[1-2]?\\d:\\d\\d(\\n\\+\\d?\\d:[0-5]\\d)?$"
     }
-  ]
+  ],
+  "inputs": {
+    "rollback_deposit": false,
+    "team1_cash": -1
+  }
 }

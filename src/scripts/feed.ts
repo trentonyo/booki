@@ -1,4 +1,4 @@
-import {StateModel, LandMarkOCR} from "./processGameFrame";
+import {LandMarkOCR, StateModel} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
 
 //  IMPORTANT! See /server.ts for stateModels
@@ -117,6 +117,17 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                     }
 
                     datum.VALUE = potential;
+                }
+
+                // Collect controls
+                const controls = document.querySelector("#controls") as HTMLFormElement;
+                if (controls && processedStateModel.inputs) {
+                    for (const key in processedStateModel.inputs) {
+                        const input = controls.elements.namedItem(key) as HTMLInputElement;
+                        if (input) {
+                            processedStateModel.inputs[key] = input.type === "checkbox" ? input.checked : input.value;
+                        }
+                    }
                 }
 
                 // Load and execute the specialized per-game script
