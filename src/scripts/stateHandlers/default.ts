@@ -24,4 +24,6 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
         element.innerHTML = landMark.VALUE || element.innerHTML;
     }
+
+    return false;
 }

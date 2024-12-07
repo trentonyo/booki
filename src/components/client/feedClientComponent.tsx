@@ -55,7 +55,8 @@ const FeedClientComponent: React.FC = () => {
         if (gameStateModel) {
             startCamera(
                 modelName!,
-                gameStateModel
+                gameStateModel,
+                false
             );
         }
     }, [gameStateModel]);

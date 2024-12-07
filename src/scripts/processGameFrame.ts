@@ -85,7 +85,8 @@ type Constraints = {
 export type StateModel = {
     constraints: Constraints;
     gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA)[];
-    inputs?: { [key: string]: any }
+    inputs?: { [key: string]: any };
+    captureFrame?: boolean;
 };
 
 /****************
@@ -248,24 +249,12 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     return {name: landMark.name, text: JSON.stringify(output)};
 }
 
-// function debugWriteImage(imageBuffer: Buffer, landMark: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA), stateModel: StateModel, step: number) {
-function debugWriteImage(imageBuffer: Buffer, landMark: LandMarkOCR, stateModel: StateModel, step: number) {
-    if (
-        ["score_firstCash", "score_secondCash", "score_thirdCash", "score_fourthCash"].includes(landMark.name)
-        && landMark.VALUE
-        && landMark.VALUE.length > 6
-    ) {
-        const regex = new RegExp(landMark.validRegex!);
-        const result = regex.exec(landMark.VALUE.trim());
-
-        if (result) {
-            const nameWords = stateModel.constraints.displayName.split(" ");
-            const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
-                .toUpperCase()
-                .replace(/[^A-Z]+/g, '');
-            writeFileSync(`.debug/RAW_${encodedName}_${landMark.name}_${step}_${result[0]}.png`, imageBuffer, {flag: 'w'});
-        }
-    }
+function debugWriteImage(imageBuffer: Buffer, name: string, stateModel: StateModel) {
+    const nameWords = stateModel.constraints.displayName.split(" ");
+    const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
+        .toUpperCase()
+        .replace(/[^A-Z]+/g, '');
+    writeFileSync(`.debug/${encodedName}_${name}.png`, imageBuffer, {flag: 'w'});
 }
 
 // Step allows for spreading recognize jobs out per landmark
@@ -314,13 +303,13 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
             const matchingLandMark = output.gameState.find(landMark => landMark.name === landMarkNameTextPair.name);
             if (matchingLandMark) {
                 matchingLandMark.VALUE = landMarkNameTextPair.text;
-
-                // TODO debug
-                if (matchingLandMark.type === "ocr" && matchingLandMark.validRegex) {
-                    // debugWriteImage(rawImageBuffer, matchingLandMark, stateModel, step);
-                }
             }
         }
+    }
+
+    if (stateModel.captureFrame) {
+        const name = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
+        debugWriteImage(rawImageBuffer, name, stateModel);
     }
 
     step++;

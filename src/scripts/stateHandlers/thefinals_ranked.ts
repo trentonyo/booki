@@ -78,7 +78,7 @@ function correctOcrValue(ocrValue: string): string | null {
 
     let output = null;
     solutions.forEach(solution => {
-        // Just takes the last solution, if applicable TODO might choose more intelligently
+        // Just takes the last solution, if applicable
         if (solution) {
             output = solution;
         }
@@ -161,11 +161,6 @@ class Team {
             && (amount < this.cash ? validReduction : true)  // If the amount is a reduction, validate the reduction amount (ignoring if an increment)
             || (force)
         ) {
-            // TODO Debug
-            // if (amount > 1.2 * this.cash) {
-                // console.warn(`Significant increase: ${amount} (${validDepositAcc}, ${validReduction}, ${validAccumulation}, ${validAccWithReduction})`)
-            // }
-
             /**
              * If this team's cash was successfully updated by this amount, return true
              */
@@ -435,7 +430,7 @@ class DepositPool {
         // If this deposit matches the deposits that this team already has, then ignore/validate it
         if (team.getDeposit && amount === team.getDeposit.value) {
             checkMultiple = false;
-            // TODO validate it?
+            // Matching deposits may at some point be validated in some kind of consensus model, but as of now they are essentially ignored.
             console.log(`💰MATCHING EXISTING DEPOSIT: ${team.name} with ${amount}`)
             uncaughtDeposit = false
         }
@@ -457,12 +452,10 @@ class DepositPool {
             //  AND there is not another available cashbox of this amount, then it's a steal
             if (matchingOtherTeam && !this.remainingDeposits.includes(amount)) {
                 checkMultiple = false;
-                // TODO DONE deposit stolen?
                 console.log(`💰STOLEN FROM OTHER TEAM: ${team.name} stole  ${amount} from ${matchingOtherTeam.name}`)
                 uncaughtDeposit = false
                 team.stealDepositFrom(matchingOtherTeam)
             } else if (this.remainingDeposits.includes(amount)) {
-                // TODO DONE new deposit of same denomination
                 const toStart = this.pop();
 
                 if (toStart) {
@@ -480,7 +473,6 @@ class DepositPool {
             const potentialDeposit = amount - startedDeposit;
 
             if (this.peek() && potentialDeposit === this.peek()) {
-                // TODO DONE merge a deposit of the amount potential
                 if (team.getDeposit) {
                     const toMerge = this.pop();
 
@@ -499,7 +491,6 @@ class DepositPool {
             && this.peek()
             && amount === this.peek()
         ) {
-            // TODO DONE start a new deposit of the amount
             if (!team.getDeposit) {
                 const toStart = this.pop();
 
@@ -668,6 +659,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     const sortedTeams: Team[] = [];
     const colorRanks = ["color_first", "color_second", "color_third"];
 
+    let captureFrame = false;
+
     /**
      * Input handling
      */
@@ -678,6 +671,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                     const b = document.querySelector("#rollback_deposit")! as HTMLInputElement;
                     rollbackLastDeposit();
                     b.checked = false;
+                    captureFrame = true;
                 }
                 break;
         }
@@ -862,7 +856,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     })
 
     // If all two deposits are accounted for, then no other team might be depositing
-    // TODO this should not be necessary once DepositPool is finished
+    // TODO try removing this, it should not be necessary once DepositPool is finished
     if (numTeamsDepositing === 2) {
         sortedTeams.forEach(team => {
             team.mightBeDepositing = false;
@@ -993,4 +987,6 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         console.warn("'#team_slots' not found, looking again")
         teamSlots = document.getElementById("team_slots");
     }
+
+    return captureFrame;
 }
