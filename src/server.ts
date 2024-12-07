@@ -23,6 +23,8 @@ export const gameStateModels: StateModelMap = {
     "test": require("../public/stateModels/test.json") as StateModel
 }
 
+const sessionID = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
+
 function isLandmark(landmark: any): landmark is LandMarkOCR {
     return landmark.hasOwnProperty('charMask');
 }
@@ -57,7 +59,8 @@ app.post('/game/:model', async (req, res) => {
 
     const modelParsed = {
         ...gameStateModels[model],
-        captureFrame: captureFrame || false
+        captureFrame: captureFrame || false,
+        sessionID: sessionID
     };
 
     const result = await processGameFrame(image, modelParsed, minX, minY);

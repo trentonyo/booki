@@ -87,6 +87,7 @@ export type StateModel = {
     gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA)[];
     inputs?: { [key: string]: any };
     captureFrame?: boolean;
+    sessionID?: string;
 };
 
 /****************
@@ -254,7 +255,12 @@ function debugWriteImage(imageBuffer: Buffer, name: string, stateModel: StateMod
     const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
         .toUpperCase()
         .replace(/[^A-Z]+/g, '');
-    writeFileSync(`.debug/${encodedName}_${name}.png`, imageBuffer, {flag: 'w'});
+    const imageName = `${encodedName}_${name}`
+    const logName = `${encodedName}_${stateModel.sessionID}`
+    writeFileSync(`.debug/${imageName}.png`, imageBuffer, {flag: 'w'});
+
+    const log = `${imageName}\\${encodeURIComponent(JSON.stringify(stateModel.gameState))}\n`
+    writeFileSync(`.debug/${logName}_log.txt`, log, {flag: 'a'});
 }
 
 // Step allows for spreading recognize jobs out per landmark
@@ -293,7 +299,6 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
                 console.error(`Unhandled landmark type!`);
                 return { name: "ERROR", text: "ERROR" };
         }
-
     });
 
     const landMarkNameTextPairs = await Promise.all(recognizePromises);
