@@ -15,15 +15,15 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 export type StateModelMap = { [game: string]: StateModel };
 
-// Load in all gamestate models and their char masks to the OCR
-//  IMPORTANT! See /scripts/feed.ts for specialty scripts
+//  Load in all gamestate models and their char masks to the OCR
+/** IMPORTANT! See /scripts/feed.ts for specialty scripts */
 export const gameStateModels: StateModelMap = {
     "thefinals_ranked": require("../public/stateModels/thefinals_ranked.json") as StateModel,
     "thefinals_quickcash": require("../public/stateModels/thefinals_quickcash.json") as StateModel,
     "test": require("../public/stateModels/test.json") as StateModel
 }
 
-const sessionID = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
+let sessionID = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
 
 function isLandmark(landmark: any): landmark is LandMarkOCR {
     return landmark.hasOwnProperty('charMask');
@@ -74,6 +74,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/feed', (req, res) => {
+    sessionID = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
     res.sendFile(path.join(__dirname, '../dist/feed.html'));
 });
 
