@@ -1,11 +1,14 @@
-import {StateModel, LandMarkOCR} from "./processGameFrame";
+import {LandMarkOCR, StateModel} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
-import {colorDistance} from "./colorUtil";
 
 //  IMPORTANT! See /server.ts for stateModels
 const handlers: { [modelName: string]: (processedGameState: StateModel) => void } = {
     "default": require("./stateHandlers/default").default,
     "thefinals_ranked": require("./stateHandlers/thefinals_ranked").default,
+}
+
+function isLandmarkWithValidRegex(landmark: any): landmark is LandMarkOCR {
+    return landmark.hasOwnProperty('validRegex');
 }
 
 export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
@@ -35,14 +38,9 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         maxY = Math.max(maxY, landmark.rect.top + landmark.rect.height)
 
         // Collect valid regex
-        try {
-            const landMarkOCR = landmark as LandMarkOCR;
-
-            if (landMarkOCR.validRegex) {
-                regexValidators[landMarkOCR.name] = new RegExp(landMarkOCR.validRegex);
-            }
-        } catch { }
-
+        if (isLandmarkWithValidRegex(landmark) && landmark.validRegex !== "") {
+            regexValidators[landmark.name] = new RegExp(landmark.validRegex!);
+        }
 
         // Collect rects
         debugRects.push(landmark.rect)
@@ -68,7 +66,7 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
         ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
 
         // Draw bounding boxes for each landmark TODO Debug
-        // /*
+        /*
         ctx!.strokeStyle = "#ff0059"
         for (const debugRect of debugRects) {
             ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);
@@ -100,7 +98,13 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                 }
 
                 for (const datum of processedStateModel.gameState) {
-                    let potential: string | undefined = (datum.VALUE as string).trim()
+                    let potential: string | undefined
+                    try {
+                        potential = (datum.VALUE as string).trim()
+                    } catch (e) {
+                        console.warn("Still waiting for data, approximately 30s...")
+                        return;
+                    }
                     // If there is a regex validator set up, use it
                     if (regexValidators[datum.name]) {
                         const result = regexValidators[datum.name].exec(potential);
@@ -115,11 +119,22 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
                     datum.VALUE = potential;
                 }
 
+                // Collect controls
+                const controls = document.querySelector("#controls") as HTMLFormElement;
+                if (controls && processedStateModel.inputs) {
+                    for (const key in processedStateModel.inputs) {
+                        const input = controls.elements.namedItem(key) as HTMLInputElement;
+                        if (input) {
+                            processedStateModel.inputs[key] = input.type === "checkbox" ? input.checked : input.value;
+                        }
+                    }
+                }
+
                 // Load and execute the specialized per-game script
                 try {
                     handlers[modelName](processedStateModel);
                 } catch (error) {
-                    console.warn(`Falling back to default handler because specialized script for ${modelName} could not be loaded:`, error);
+                    console.warn(`Falling back to default handler because specialized script for ${modelName} could not be run:`, error);
                     handlers["default"](processedStateModel);
                 }
             })

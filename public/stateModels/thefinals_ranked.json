@@ -15,22 +15,50 @@
     {
       "type": "color",
       "name": "color_first",
-      "rect": {"left": 120, "top": 84, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 117, "width": 8, "height": 8}
     },
     {
       "type": "color",
       "name": "color_second",
-      "rect": {"left": 120, "top": 138, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 169, "width": 8, "height": 8}
     },
     {
       "type": "color",
       "name": "color_third",
-      "rect": {"left": 120, "top": 240, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 274, "width": 8, "height": 8}
     },
     {
       "type": "color",
       "name": "color_fourth",
-      "rect": {"left": 120, "top": 291, "width": 10, "height": 10}
+      "rect": {"left": 122, "top": 324, "width": 8, "height": 8}
+    },
+    {
+      "type": "ocr",
+      "name": "respawn_first",
+      "rect": {"left": 125, "top": 89, "width": 36, "height": 36},
+      "charMask": "1234567890",
+      "useOriginal": true
+    },
+    {
+      "type": "ocr",
+      "name": "respawn_second",
+      "rect": {"left": 125, "top": 143, "width": 36, "height": 36},
+      "charMask": "1234567890",
+      "useOriginal": true
+    },
+    {
+      "type": "ocr",
+      "name": "respawn_third",
+      "rect": {"left": 125, "top": 245, "width": 36, "height": 36},
+      "charMask": "1234567890",
+      "useOriginal": true
+    },
+    {
+      "type": "ocr",
+      "name": "respawn_fourth",
+      "rect": {"left": 125, "top": 296, "width": 36, "height": 36},
+      "charMask": "1234567890",
+      "useOriginal": true
     },
     {
       "type": "colorCountA",
@@ -172,7 +200,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 82, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -180,7 +208,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 137, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -188,7 +216,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 238, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -196,7 +224,7 @@
       "step": 6,
       "rect": {"left": 170, "top": 291, "width": 240, "height": 55},
       "charMask": "$+1234567890",
-      "validRegex": "^\\$\\d+(\\+\\$(7000|10000|15000))?$"
+      "validRegex": "^\\$\\d+(\\+\\$\\d+)?$"
     },
     {
       "type":  "ocr",
@@ -206,5 +234,9 @@
       "charMask": ":+1234567890",
       "validRegex": "^[1-2]?\\d:\\d\\d(\\n\\+\\d?\\d:[0-5]\\d)?$"
     }
-  ]
+  ],
+  "inputs": {
+    "rollback_deposit": false,
+    "team1_cash": -1
+  }
 }

@@ -72,6 +72,6 @@ app.get('/feed', (req, res) => {
 });
 
 app.listen(port, () => {
-    initGameStateModels(12);
+    initGameStateModels(10);
     console.log(`OCR service listening at http://${host}:${port}`);
 });
