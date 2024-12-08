@@ -1,40 +1,43 @@
-'use client';
-
 import React, { useEffect, useState } from "react";
-import { StateModelMap } from "../../server";
-import { StateModel } from "../../scripts/processGameFrame";
-import { startCamera } from "../../scripts/feed";
-
-import DefaultGameStateView from "../../scripts/stateHandlers/default_view";
-import TheFinalsRankedGameStateView from "../../scripts/stateHandlers/thefinals_ranked_view";
 
 const DataClientComponent: React.FC = () => {
     const [dataSetName, setDataSetName] = useState<string | null>(null);
+    const [fetchedData, setFetchedData] = useState<any>(null);
 
+    // First effect to set the dataSetName
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const setString = urlParams.get('set');
 
         if (setString) {
-            const decodedString = decodeURIComponent(setString);
             try {
-                setDataSetName(decodedString);
+                setDataSetName(decodeURIComponent(setString));
             } catch (error) {
                 console.error("Failed to parse dataset", error);
             }
         }
     }, []);
 
+    // Second effect that depends on dataSetName
+    useEffect(() => {
+        if (dataSetName) {
+            fetch(`api/data/${dataSetName}.txt`)
+                .then(response => response.text())
+                .then(data => {
+                    setFetchedData(data);
+                })
+                .catch(error => {
+                    console.error("Failed to fetch data:", error);
+                });
+        }
+    }, [dataSetName]); // Dependency on dataSetName
+
     return (
-        <>
-            <a href="/"><h1 className="text-xl underline pl-6 pt-6 italic">🏠Return Home</h1></a>
-            <h2
-                className="text-3xl font-bold pt-6 pl-14  text-blue-900 italic"
-            >
-                Data Validation
-            </h2>
-            Let's see if we can validate {dataSetName}...
-        </>
+        <div>
+            <h1>Data Validation</h1>
+            {fetchedData ? <div>Data fetched successfully.</div> : <div>Loading data...</div>}
+            {fetchedData ? <div>{fetchedData}</div> : <div>No data found.</div>}
+        </div>
     );
 };
 

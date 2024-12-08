@@ -75,6 +75,9 @@ app.get('/api/data-sets', (req, res) => {
     res.json(txtFiles);
 });
 
+
+app.use('/api/data', express.static(path.join(__dirname, '../.debug')));
+
 app.post('/game/:model', async (req, res) => {
     const { image, minX, minY, captureFrame } = req.body;
     const { model } = req.params;
