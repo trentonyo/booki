@@ -1,4 +1,11 @@
-import {ColorsAndThresholds, LandMarkColor, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
+import {
+    ColorsAndThresholds,
+    HandledGameState,
+    LandMarkColor,
+    LandMarkColorCountA,
+    LandMarkOCR,
+    StateModel
+} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
 import Color from "colorjs.io";
@@ -23,6 +30,11 @@ function r(rank: Ranks) {
             return 3
     }
 }
+
+let LOG_captureFrame = false;
+
+const LOG_captureTimer = new SuggestTimer(15);
+LOG_captureTimer.start()
 
 const RULES = {
     depositAmounts: [7000, 10000, 15000, /* doubled up -> */ 14000, 17000, 20000, 22000, 25000, 30000],
@@ -119,6 +131,10 @@ class Team {
 
     constructor(protected color: string, protected respawnColor: string, public name: string, public rank: Ranks) {
 
+    }
+
+    get toString() {
+        return `${this.name} (${this.color}) $${this.cash}${this.respawnTimer && this.respawnTimer.remaining ? ` respawn ${this.respawnTimer.remaining}s` : ""}${this.deposit ? ` deposit $${this.deposit.value} ${this.deposit.remainingSeconds()}s` : ""}`
     }
 
     get getColor() {
@@ -455,6 +471,7 @@ class DepositPool {
                 console.log(`💰STOLEN FROM OTHER TEAM: ${team.name} stole  ${amount} from ${matchingOtherTeam.name}`)
                 uncaughtDeposit = false
                 team.stealDepositFrom(matchingOtherTeam)
+                LOG_captureFrame = true;
             } else if (this.remainingDeposits.includes(amount)) {
                 const toStart = this.pop();
 
@@ -463,6 +480,7 @@ class DepositPool {
                     uncaughtDeposit = false
                     const newDeposit = new Deposit(toStart! as DepositDenominations, gameTimer.remaining!, team);
                     team.assignDeposit(newDeposit);
+                    LOG_captureFrame = true;
                 }
             }
         }
@@ -480,6 +498,7 @@ class DepositPool {
                         console.log(`💰MERGE A DEPOSIT OF THE AMOUNT: ${toMerge} for ${team.name}`)
                         uncaughtDeposit = false
                         team.mergeDeposit(toMerge!)
+                        LOG_captureFrame = true;
                     }
                 }
             }
@@ -499,6 +518,7 @@ class DepositPool {
                     uncaughtDeposit = false
                     const newDeposit = new Deposit(toStart! as DepositDenominations, gameTimer.remaining!, team);
                     team.assignDeposit(newDeposit);
+                    LOG_captureFrame = true;
                 }
             }
         }
@@ -513,12 +533,14 @@ class DepositPool {
                 const first = this.pop()
                 if (!first) {
                     console.warn("== Attempted to pop a new deposit when the remaining deposits array is empty.")
+                    LOG_captureFrame = true;
                     return;
                 }
 
                 const second = this.pop()
                 if (!second) {
                     console.warn("== Attempted to pop a new deposit when the remaining deposits array is empty.")
+                    LOG_captureFrame = true;
                     this.rollback(false)
                     return;
                 }
@@ -527,6 +549,7 @@ class DepositPool {
                 team.assignDeposit(newDeposit);
                 team.mergeDeposit(second as DepositDenominations);
                 console.log(`💰NEW DOUBLE DEPOSIT OF THE AMOUNT: ${team.name} gets ${topTwoSum}`)
+                LOG_captureFrame = true;
             } else {
                 if (progressBar && amount) {
                     console.warn(`💰PROGRESS SUGGESTION SUGGESTION rank: ${rank} team: ${team.name} amount: ${amount} progressBar: ${progressBar}`);
@@ -547,11 +570,13 @@ class DepositPool {
 
                     console.warn(`💰STOLEN DOUBLE: ${team.name} stole $${amount} from ${matchingOtherTeam!} to bring their total up to $${team.getDeposit?.value}`);
                     team.stealDepositFrom(matchingOtherTeam!);
+                    LOG_captureFrame = true;
 
                 } else {
                     console.warn(`💰UNCAUGHT SUGGESTION rank: ${rank} team: ${team.name} amount: ${amount} progressBar: ${progressBar} ocrCorrected: ${ocrCorrected} topTwoSum: ${topTwoSum}`)
                     console.warn("remainingDeposits", this.remainingDeposits)
-                    console.warn("runningDeposits", this.runningDeposits)   
+                    console.warn("runningDeposits", this.runningDeposits)
+                    LOG_captureFrame = true;
                 }
             }
         }
@@ -653,13 +678,12 @@ function cashAndDeposit(str: string) {
     return {cash: cash, deposit: deposit};
 }
 
-export default function handleProcessedGameState(processedGameState: StateModel) {
+export default function handleProcessedGameState(processedGameState: StateModel): HandledGameState {
     const ranks: ["first", "second", "third", "fourth"] = ["first", "second", "third", "fourth"];
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
     const sortedTeams: Team[] = [];
     const colorRanks = ["color_first", "color_second", "color_third"];
 
-    let captureFrame = false;
 
     /**
      * Input handling
@@ -671,7 +695,7 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                     const b = document.querySelector("#rollback_deposit")! as HTMLInputElement;
                     rollbackLastDeposit();
                     b.checked = false;
-                    captureFrame = true;
+                    LOG_captureFrame = true;
                 }
                 break;
         }
@@ -988,5 +1012,26 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         teamSlots = document.getElementById("team_slots");
     }
 
-    return captureFrame;
+    if (!LOG_captureTimer.remaining || LOG_captureTimer.remaining <= 0) {
+        LOG_captureFrame = true;
+        LOG_captureTimer.stop();
+        LOG_captureTimer.start();
+    }
+
+    if (LOG_captureFrame) {
+        console.log("Sampling:", LOG_captureFrame, LOG_captureTimer.remaining)
+        LOG_captureFrame = false
+        return {
+            "sessionID": processedGameState.sessionID!,
+            "gameTimer.remaining": `${Math.floor(gameTimer.remaining! / 60)}:${(gameTimer.remaining! % 60).toFixed(0).padStart(2, "0")} (${gameTimer.remaining}s)`,
+            ...sortedTeams.map(team => team.toString),
+            "details": {
+                "sortedTeams": sortedTeams,
+                "depositsRemaining": DepositPoolSingleton.depositsRemaining,
+                "depositsRunning": DepositPoolSingleton.depositsRunning
+            }
+        };
+    }
+
+    return null;
 }

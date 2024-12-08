@@ -81,6 +81,11 @@ type Constraints = {
     };
 };
 
+export type HandledGameState = null | {
+    sessionID: string;
+    [key: string]: any;
+};
+
 // Define the StateModel type composing Constraints, an array of LandMark, and an optional game logic function
 export type StateModel = {
     constraints: Constraints;
@@ -88,6 +93,7 @@ export type StateModel = {
     inputs?: { [key: string]: any };
     captureFrame?: boolean;
     sessionID?: string;
+    handledGameState?: HandledGameState; // ONLY to be updated by a stateHandler function, is returned for data logging
 };
 
 /****************
@@ -250,16 +256,16 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     return {name: landMark.name, text: JSON.stringify(output)};
 }
 
-function debugWriteImage(imageBuffer: Buffer, name: string, stateModel: StateModel) {
-    const nameWords = stateModel.constraints.displayName.split(" ");
+export function debugWriteImage(imageBuffer: Buffer, modelDisplayName: string, datumName: string, stateModel: StateModel) {
+    const nameWords = modelDisplayName.split(" ");
     const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
         .toUpperCase()
         .replace(/[^A-Z]+/g, '');
-    const imageName = `${encodedName}_${name}`
+    const imageName = `${encodedName}_${datumName}`
     const logName = `${encodedName}_${stateModel.sessionID}`
     writeFileSync(`.debug/${imageName}.png`, imageBuffer, {flag: 'w'});
 
-    const log = `${imageName}\\${encodeURIComponent(JSON.stringify(stateModel.gameState))}\n`
+    const log = `${imageName}\\${encodeURIComponent(JSON.stringify(stateModel))}\n`
     writeFileSync(`.debug/${logName}_log.txt`, log, {flag: 'a'});
 }
 
@@ -312,10 +318,10 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
         }
     }
 
-    if (stateModel.captureFrame) {
-        const name = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
-        debugWriteImage(rawImageBuffer, name, stateModel);
-    }
+    // if (stateModel.captureFrame) {
+    //     const name = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
+    //     debugWriteImage(rawImageBuffer, name, stateModel);
+    // }
 
     step++;
     return output;

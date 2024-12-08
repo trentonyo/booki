@@ -1,6 +1,6 @@
-import {StateModel} from "../processGameFrame";
+import {HandledGameState, StateModel} from "../processGameFrame";
 
-export default function handleProcessedGameState(processedGameState: StateModel) {
+export default function handleProcessedGameState(processedGameState: StateModel): HandledGameState {
     console.log("DEFAULT")
     for (const landMark of processedGameState.gameState) {
         const element = document.getElementById(landMark.name)!;
@@ -25,5 +25,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         element.innerHTML = landMark.VALUE || element.innerHTML;
     }
 
-    return false;
+    return {
+        "sessionID": "test",
+        "handledGameState": true
+    };
 }

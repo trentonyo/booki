@@ -1,8 +1,8 @@
-import {LandMarkOCR, StateModel} from "./processGameFrame";
+import {LandMarkOCR, StateModel, HandledGameState} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
 
 //  IMPORTANT! See /server.ts for stateModels
-const handlers: { [modelName: string]: (processedGameState: StateModel) => boolean } = {
+const handlers: { [modelName: string]: (processedGameState: StateModel) => HandledGameState } = {
     "default": require("./stateHandlers/default").default,
     "thefinals_ranked": require("./stateHandlers/thefinals_ranked").default,
 }
@@ -12,7 +12,7 @@ function isLandmarkWithValidRegex(landmark: any): landmark is LandMarkOCR {
 }
 
 export async function startCamera(modelName: string, stateModel: StateModel, drawLandmarkBounds = false): Promise<void> {
-    let captureFrame = false;
+    let handledGameState: HandledGameState = null;
 
     const constraints = {
         video: {
@@ -86,7 +86,7 @@ export async function startCamera(modelName: string, stateModel: StateModel, dra
                 image: dataURL,
                 minX: minX,
                 minY: minY,
-                captureFrame: captureFrame,
+                captureFrame: handledGameState,
             })
         }).then(response => response.json())
             .then(async result => {
@@ -135,10 +135,25 @@ export async function startCamera(modelName: string, stateModel: StateModel, dra
 
                 // Load and execute the specialized per-game script
                 try {
-                    captureFrame = handlers[modelName](processedStateModel);
+                    handledGameState = handlers[modelName](processedStateModel);
                 } catch (error) {
                     console.warn(`Falling back to default handler because specialized script for ${modelName} could not be run:`, error);
-                    captureFrame = handlers["default"](processedStateModel);
+                    handledGameState = handlers["default"](processedStateModel);
+                }
+
+                if (handledGameState) {
+                    fetch(`http://localhost:3000/api/data/${modelName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            image: dataURL,
+                            handledGameState: handledGameState
+                        })
+                    })
+                        .then(response => console.log('Logged data: STATUS', response.status))
+                        .catch(error => console.error('Error logging data:', error));
                 }
             })
             .catch(error => console.error('Error:', error));

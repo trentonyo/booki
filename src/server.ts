@@ -1,7 +1,7 @@
 // server.ts
 import express from 'express';
 import {PrismaClient} from '@prisma/client';
-import {LandMarkOCR, processGameFrame, StateModel} from "./scripts/processGameFrame";
+import {debugWriteImage, LandMarkOCR, processGameFrame, StateModel} from "./scripts/processGameFrame";
 import path from 'path';
 import {initOCRWorkerPool} from "./scripts/workOCR";
 import fs from 'fs';
@@ -75,8 +75,23 @@ app.get('/api/data-sets', (req, res) => {
     res.json(txtFiles);
 });
 
-
 app.use('/api/data', express.static(path.join(__dirname, '../.debug')));
+
+app.post('/api/data/:model', async (req, res) => {
+    const { image, handledGameState } = req.body;
+    const { model } = req.params;
+    if (!gameStateModels.hasOwnProperty(model)) {
+        res.status(404).json({ error: `GameState model "${model}" not found` });
+        return;
+    }
+
+    const name = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
+    const rawImageBuffer = Buffer.from(image.split(',')[1], 'base64');
+
+    debugWriteImage(rawImageBuffer, gameStateModels[model].constraints.displayName, name, handledGameState);
+
+    res.sendStatus(201);
+})
 
 app.post('/game/:model', async (req, res) => {
     const { image, minX, minY, captureFrame } = req.body;

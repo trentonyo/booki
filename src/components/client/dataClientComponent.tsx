@@ -22,7 +22,6 @@ const DatumFrame: React.FC<DatumFrameProps> = ({datum}) => {
     let [imageURI, gameState] = datum.split("\\", 2)
     imageURI = `api/data/${imageURI}.png`
     gameState = gameState ? JSON.parse(decodeURIComponent(gameState)) : undefined
-    console.log(gameState)
 
     return gameState === undefined ? null : (
         <div className="flex flex-col gap-4 h-full">
