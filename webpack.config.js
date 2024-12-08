@@ -39,6 +39,12 @@ module.exports = {
       inject: 'body',
       chunks: ['main', 'camera'],
       filename: 'feed.html'
+    }),
+    new HtmlWebpackPlugin({
+      template: './public/data.html',
+      inject: 'body',
+      chunks: ['main'],
+      filename: 'data.html'
     })
   ],
   devServer: {

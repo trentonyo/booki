@@ -1,9 +1,10 @@
 // server.ts
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import {PrismaClient} from '@prisma/client';
 import {LandMarkOCR, processGameFrame, StateModel} from "./scripts/processGameFrame";
 import path from 'path';
 import {initOCRWorkerPool} from "./scripts/workOCR";
+import fs from 'fs';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json({ limit: '50mb' })); // Increase the limit for large image 
 app.use(express.static(path.join(__dirname, '../dist')));
 
 export type StateModelMap = { [game: string]: StateModel };
+export type DataSetMap = { [sessionID: string]: string };
 
 //  Load in all gamestate models and their char masks to the OCR
 /** IMPORTANT! See /scripts/feed.ts for specialty scripts */
@@ -48,6 +50,31 @@ app.get('/api/game-state-models', (req, res) => {
     res.json(gameStateModels);
 });
 
+app.get('/api/data-sets', (req, res) => {
+    function getTxtFilesInDebugDir(): { [fileName: string]: string } {
+        const debugDirPath = path.join(__dirname, '../.debug');
+        if (!fs.existsSync(debugDirPath)) {
+            console.error(`Directory does not exist: ${debugDirPath}`);
+            return {};
+        }
+        try {
+            return fs.readdirSync(debugDirPath)
+                .filter(file => path.extname(file) === '.txt')
+                .reduce((acc, file) => {
+                    const filePath = path.join(debugDirPath, file);
+                    acc[file] = fs.readFileSync(filePath, 'utf-8');
+                    return acc;
+                }, {} as { [fileName: string]: string });
+        } catch (error) {
+            console.error(`Error reading directory: ${error}`);
+            return {};
+        }
+    }
+
+    const txtFiles = getTxtFilesInDebugDir();
+    res.json(txtFiles);
+});
+
 app.post('/game/:model', async (req, res) => {
     const { image, minX, minY, captureFrame } = req.body;
     const { model } = req.params;
@@ -76,6 +103,10 @@ app.get('/', (req, res) => {
 app.get('/feed', (req, res) => {
     sessionID = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
     res.sendFile(path.join(__dirname, '../dist/feed.html'));
+});
+
+app.get('/data', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/data.html'));
 });
 
 app.listen(port, () => {

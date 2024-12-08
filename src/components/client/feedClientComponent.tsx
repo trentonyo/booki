@@ -80,7 +80,7 @@ const FeedClientComponent: React.FC = () => {
 
     return (
         <>
-            <a href="/"><h1 className="text-xl underline pl-6 pt-6 italic">🡠 Return Home</h1></a>
+            <a href="/"><h1 className="text-xl underline pl-6 pt-6 italic">🏠Return Home</h1></a>
             <h2
                 className="text-3xl font-bold pt-6 pl-14  text-blue-900 italic"
             >
