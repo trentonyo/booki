@@ -571,6 +571,14 @@ video {
   display: table;
 }
 
+.h-2\/3 {
+  height: 66.666667%;
+}
+
+.h-full {
+  height: 100%;
+}
+
 .w-1\/2 {
   width: 50%;
 }
