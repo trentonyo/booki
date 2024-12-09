@@ -57,13 +57,13 @@ export function DataValidationFrame(props: DataValidationFrameProps) {
     return (
         <div className="datum_frame flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
-                <div className="font-bold">Time Remaining:</div><label>{props.datum["gameTimer.remaining"]} <input type="checkbox" id={`${props.frameID}_gameTimer.remaining`}/></label>
-                <div className={`font-bold ${extractColor(props.datum["0"])}`}>First Place:</div><label>{props.datum["0"]} <input type="checkbox" id={`${props.frameID}_0`}/></label>
-                <div className={`font-bold ${extractColor(props.datum["1"])}`}>Second Place:</div><label>{props.datum["1"]} <input type="checkbox" id={`${props.frameID}_1`}/></label>
-                <div className={`font-bold ${extractColor(props.datum["2"])}`}>Third Place:</div><label>{props.datum["2"]} <input type="checkbox" id={`${props.frameID}_2`}/></label>
-                <div className={`font-bold ${extractColor(props.datum["3"])}`}>Fourth Place:</div><label>{props.datum["3"]} <input type="checkbox" id={`${props.frameID}_3`}/></label>
+                <div className="font-bold">Time Remaining:</div><label>{props.datum["gameTimer.remaining"]} <input type="checkbox" name={`${props.frameID}_gameTimer.remaining`}/></label>
+                <div className={`font-bold ${extractColor(props.datum["0"])}`}>First Place:</div><label>{props.datum["0"]} <input type="checkbox" name={`${props.frameID}_0`}/></label>
+                <div className={`font-bold ${extractColor(props.datum["1"])}`}>Second Place:</div><label>{props.datum["1"]} <input type="checkbox" name={`${props.frameID}_1`}/></label>
+                <div className={`font-bold ${extractColor(props.datum["2"])}`}>Third Place:</div><label>{props.datum["2"]} <input type="checkbox" name={`${props.frameID}_2`}/></label>
+                <div className={`font-bold ${extractColor(props.datum["3"])}`}>Fourth Place:</div><label>{props.datum["3"]} <input type="checkbox" name={`${props.frameID}_3`}/></label>
             </div>
-            <label>Details <input type="checkbox" id="details" /></label>
+            {/*<label>Details <input type="checkbox" defaultChecked={true} name={`${props.frameID}_details`} /></label>*/}
             <details>
                 <summary>Details</summary>
                 <pre>{JSON.stringify(props.datum["details"], null, 2)}</pre>

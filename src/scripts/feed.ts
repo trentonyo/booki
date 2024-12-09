@@ -152,7 +152,6 @@ export async function startCamera(modelName: string, stateModel: StateModel, dra
                             handledGameState: handledGameState
                         })
                     })
-                        .then(response => console.log('Logged data: STATUS', response.status))
                         .catch(error => console.error('Error logging data:', error));
                 }
             })

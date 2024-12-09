@@ -1019,7 +1019,6 @@ export default function handleProcessedGameState(processedGameState: StateModel)
     }
 
     if (LOG_captureFrame) {
-        console.log("Sampling:", LOG_captureFrame, LOG_captureTimer.remaining)
         LOG_captureFrame = false
         return {
             "sessionID": processedGameState.sessionID!,

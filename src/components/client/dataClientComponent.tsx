@@ -11,12 +11,20 @@ const DataSetFrame: React.FC<DataSetFrameProps> = ({rawData}) => {
     return (
         <form onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.target as HTMLFormElement);
-            const dataSetName = formData.get("dataSetName");
-            console.log("Submitted Data Set Name:", dataSetName);
+            const form = e.target as HTMLFormElement;
+            const formData = new FormData(form);
+            const numberOfInputs = form.querySelectorAll('input').length;
+            const formEntries = formData.entries();
+            let checked = 0;
+            for (const _ of formEntries) {
+                checked++;
+            }
+
+            const checkedPercent = numberOfInputs > 0 ? `${(checked / numberOfInputs * 100).toFixed(2)}%` : '--';
+
+            console.log(`(${checkedPercent} accuracy) Submitted ${checked} of ${numberOfInputs} inputs`);
         }}>
             <label htmlFor="dataSetName">Data Set Name:</label>
-            <input type="text" name="dataSetName"/>
             <div className="flex flex-col gap-4">
                 {dataLines.map((line, index) => {
                     return <div key={index}><DatumFrame datum={line}/></div>
