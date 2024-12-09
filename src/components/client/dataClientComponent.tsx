@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from "react";
+import {DataValidationFrame, Datum} from "../../scripts/stateHandlers/thefinals_ranked_view";
 
 interface DataSetFrameProps {
     rawData: string;
@@ -8,9 +9,21 @@ const DataSetFrame: React.FC<DataSetFrameProps> = ({rawData}) => {
     const dataLines = rawData.split("\n");
 
     return (
-        <div className="flex flex-col gap-4">
-            {dataLines.map((line, index) => {return <div key={index}><DatumFrame datum={line} /></div>})}
-        </div>
+        <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const dataSetName = formData.get("dataSetName");
+            console.log("Submitted Data Set Name:", dataSetName);
+        }}>
+            <label htmlFor="dataSetName">Data Set Name:</label>
+            <input type="text" name="dataSetName"/>
+            <div className="flex flex-col gap-4">
+                {dataLines.map((line, index) => {
+                    return <div key={index}><DatumFrame datum={line}/></div>
+                })}
+            </div>
+            <input type="submit" value="Submit"/>
+        </form>
     );
 }
 
@@ -21,12 +34,12 @@ interface DatumFrameProps {
 const DatumFrame: React.FC<DatumFrameProps> = ({datum}) => {
     let [imageURI, gameState] = datum.split("\\", 2)
     imageURI = `api/data/${imageURI}.png`
-    gameState = gameState ? JSON.parse(decodeURIComponent(gameState)) : undefined
+    const parsedGameState = gameState ? JSON.parse(decodeURIComponent(gameState)) : undefined
 
-    return gameState === undefined ? null : (
+    return parsedGameState === undefined ? null : (
         <div className="flex flex-col gap-4 h-full">
             <img src={imageURI} alt={imageURI} className="h-2/3"/>
-            <textarea readOnly={true} value={JSON.stringify(gameState, null, 2)} />
+            <DataValidationFrame frameID={imageURI} datum={parsedGameState as Datum} />
         </div>
     )
 }
