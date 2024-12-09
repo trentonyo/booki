@@ -625,11 +625,12 @@ const purpleTeam = new Team("#AA41FD", "#BD9CE4", "Purple Team", "fourth")
 
 const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
 
+// Increased stable suggestion minimum 2 -> 4
 const RespawnTimers = [
-    new SuggestTimer(RULES.respawnTime, false, 8, 2),
-    new SuggestTimer(RULES.respawnTime, false, 8, 2),
-    new SuggestTimer(RULES.respawnTime, false, 8, 2),
-    new SuggestTimer(RULES.respawnTime, false, 8, 2)
+    new SuggestTimer(RULES.respawnTime, false, 8, 4),
+    new SuggestTimer(RULES.respawnTime, false, 8, 4),
+    new SuggestTimer(RULES.respawnTime, false, 8, 4),
+    new SuggestTimer(RULES.respawnTime, false, 8, 4)
 ]
 
 function findClosestTeam(teams: Team[], referenceColor: string): { closestTeam: Team, index: number } {
@@ -756,9 +757,9 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         const respawn = parseInt(respawnLandmark.VALUE!, 10);
 
         if (respawn > 0) {
-            if (!respawnTimer.isStarted) {
-                respawnTimer.start();
-            }
+            // if (!respawnTimer.isStarted) {
+            //     respawnTimer.start();
+            // }
 
             respawnTimer.suggest(respawn)
 

@@ -111,6 +111,7 @@ export class DraggingConsensus<T> {
 export class SuggestTimer {
     private stableSuggestions = 0;
     public startedAt: number | null = null;
+    private stoppedSuggestions: number[] = [];
 
     constructor(protected duration: number, protected started: boolean = true, private suggestionThreshold: number = 10, private stableSuggestionMinimum: number = 1) {
         // Start the timer
@@ -148,6 +149,17 @@ export class SuggestTimer {
             // Else, adjust timer to seconds
             else if (Math.abs(diff) < this.suggestionThreshold) {
                 this.startedAt! += diff;
+            }
+        } else if (!this.started) {
+            this.stoppedSuggestions.push(remainingSecondsSuggestion);
+            
+            if (this.stoppedSuggestions.length >= this.stableSuggestionMinimum) {
+                if (this.stoppedSuggestions.every((val, i, arr) => !i || val < arr[i - 1])) {
+                    this.start();
+                    this.stoppedSuggestions.length = 0;
+                } else {
+                    this.stoppedSuggestions.pop()
+                }
             }
         }
     }
