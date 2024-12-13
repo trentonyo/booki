@@ -237,6 +237,6 @@
   ],
   "inputs": {
     "rollback_deposit": false,
-    "team1_cash": -1
+    "complete_deposits": false
   }
 }

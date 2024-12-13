@@ -611,11 +611,19 @@ class DepositPool {
             this.runningDeposits.pop()
         }
     }
+
+    public finishAllDeposits = false;
+    public markFinishAllDeposits() {
+        this.finishAllDeposits = true;
+    }
 }
 
 const DepositPoolSingleton = new DepositPool();
 export function rollbackLastDeposit() {
     DepositPoolSingleton.rollback()
+}
+export function finishDeposits() {
+    DepositPoolSingleton.markFinishAllDeposits()
 }
 
 const myTeam = new Team("#02B9F1", "#76B9D1", "Our Team", "first")
@@ -695,6 +703,14 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 if (processedGameState.inputs[input]) {
                     const b = document.querySelector("#rollback_deposit")! as HTMLInputElement;
                     rollbackLastDeposit();
+                    b.checked = false;
+                    LOG_captureFrame = true;
+                }
+                break;
+            case "complete_deposits":
+                if (processedGameState.inputs[input]) {
+                    const b = document.querySelector("#complete_deposits")! as HTMLInputElement;
+                    finishDeposits();
                     b.checked = false;
                     LOG_captureFrame = true;
                 }
@@ -867,12 +883,17 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                 }
             }
 
-            /// Update Team logic
-            if (thisTeam.getDeposit &&
+            /// Update Team logic, OR finish all deposits
+            if ((thisTeam.getDeposit &&
                 !thisTeam.getDeposit.remainingSeconds()
-            ) {
+            ) || (DepositPoolSingleton.finishAllDeposits)) {
                 const completedAmount = thisTeam.removeDeposit()
                 DepositPoolSingleton.finishDeposit(completedAmount);
+            }
+
+            if (DepositPoolSingleton.finishAllDeposits && DepositPoolSingleton.depositsRunning === 0) {
+                DepositPoolSingleton.finishAllDeposits = false;
+                console.log("Finished all deposits")
             }
 
         } catch (e) {
