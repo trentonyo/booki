@@ -9,6 +9,7 @@ export default function GameStateView(dataFeed: any) {
             <form id="controls">
                 <label>Rollback Last Deposit<input type="checkbox" id="rollback_deposit"></input></label>
                 <label>Complete All Deposits<input type="checkbox" id="complete_deposits"></input></label>
+                <label style={{display: "none"}}>Add Overtime (60s)<input type="checkbox" id="add_overtime"></input></label>
             </form>
             <div id="game_timer">-:--</div>
             <div id="team_slots">Awaiting data...</div>

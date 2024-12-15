@@ -715,6 +715,23 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                     LOG_captureFrame = true;
                 }
                 break;
+            case "add_overtime":
+                const b = document.querySelector("#add_overtime")! as HTMLInputElement;
+                if (overTimeApplied || (gameTimer.remaining && gameTimer.remaining > 100)) {
+                    // If overtime has already been applied or there's still lots of time left in the game, hide the button
+                    b.parentElement!.style.display = "none";
+                } else {
+                    // If there hasn't been overtime added and it's nearing the end of the round, show the button
+                    b.parentElement!.style.display = "block";
+                }
+
+                if (processedGameState.inputs[input]) {
+                    gameTimer.adjustStart(60);
+                    overTimeApplied = true;
+                    b.checked = false;
+                    LOG_captureFrame = true;
+                }
+                break;
         }
     }
 

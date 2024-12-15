@@ -237,6 +237,7 @@
   ],
   "inputs": {
     "rollback_deposit": false,
-    "complete_deposits": false
+    "complete_deposits": false,
+    "add_overtime": false
   }
 }
