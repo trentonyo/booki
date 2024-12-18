@@ -1,15 +1,6 @@
-import {
-    ColorsAndThresholds,
-    HandledGameState,
-    LandMarkColor,
-    LandMarkColorCountA,
-    LandMarkOCR,
-    StateModel
-} from "../processGameFrame";
+import {ColorsAndThresholds, HandledGameState, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
 import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
-import Color from "colorjs.io";
-import set = Color.set;
 
 /**
  * Set up the page
@@ -128,6 +119,7 @@ class Team {
 
     public draggingCapture = new DraggingAverage();
     public mightBeDepositing = false;
+    public inputCashConsensus = new DraggingConsensus(-1, 6, 2, 6);
 
     constructor(protected color: string, protected respawnColor: string, public name: string, public rank: Ranks) {
 
@@ -409,19 +401,33 @@ class DepositPool {
         return last;
     }
 
-    public rollback(removeFromTeam = true) {
-        const last = this.runningDeposits.pop();
-        if (last) {
-            this.remainingDeposits.push(last[0]);
-
-            if (removeFromTeam) {
-                // Find the team with the correct deposit and remove it
-                const teamWithDeposit = this.sortedTeams.find(team => team.getDeposit && team.getDeposit.value === last[0]);
-                if (teamWithDeposit) {
-                    teamWithDeposit.removeDeposit();
-                }
-                console.log(`Rolled back deposit of $${last[0]} from team ${teamWithDeposit?.name}`)
+    public rollback(removeFromTeam: Team | null = null) {
+        let removedAmount: DepositDenominations | undefined = undefined
+        if (removeFromTeam) {
+            removedAmount = removeFromTeam.removeDeposit();
+            
+            if (removedAmount === undefined) {
+                console.warn("== Attempted to rollback a deposit when the team does not have a deposit.")
+                return;
             }
+
+            // Find and remove the element from this.runningDeposits where item[0] === removedAmount
+            const indexToRemove = this.runningDeposits.findIndex(item => item[0] === removedAmount);
+            if (indexToRemove !== -1) {
+                this.runningDeposits.splice(indexToRemove, 1);
+                this.remainingDeposits.push(removedAmount);
+            } else {
+                console.warn("== Rolled back a deposit which did not exist in this.runningDeposits. This should not happen.")
+                return;
+            }
+            LOG_captureFrame = true;
+            console.log(`Rolled back deposit of $${removedAmount} from team ${removeFromTeam?.name}`)
+        } else {
+            let last = this.runningDeposits.shift();
+
+            if (last) {
+                this.remainingDeposits.push(last[0]);
+            }    
         }
     }
 
@@ -541,7 +547,7 @@ class DepositPool {
                 if (!second) {
                     console.warn("== Attempted to pop a new deposit when the remaining deposits array is empty.")
                     LOG_captureFrame = true;
-                    this.rollback(false)
+                    this.rollback(undefined)
                     return;
                 }
 
@@ -616,14 +622,27 @@ class DepositPool {
     public markFinishAllDeposits() {
         this.finishAllDeposits = true;
     }
+
+    public finishTeamDeposit(team: Team) {
+        const teamDeposit = team.getDeposit;
+        if (teamDeposit) {
+            team.removeDeposit();
+            this.finishDeposit(teamDeposit.value);
+            LOG_captureFrame = true;
+            console.log(`Finished deposit of $${teamDeposit.value} from team ${team.name}`)
+        }
+    }
 }
 
 const DepositPoolSingleton = new DepositPool();
-export function rollbackLastDeposit() {
-    DepositPoolSingleton.rollback()
+export function rollbackTeamDeposit(team: Team) {
+    DepositPoolSingleton.rollback(team)
 }
 export function finishDeposits() {
     DepositPoolSingleton.markFinishAllDeposits()
+}
+export function finishTeamDeposit(team: Team) {
+    DepositPoolSingleton.finishTeamDeposit(team)
 }
 
 const myTeam = new Team("#02B9F1", "#76B9D1", "Our Team", "first")
@@ -687,32 +706,71 @@ function cashAndDeposit(str: string) {
     return {cash: cash, deposit: deposit};
 }
 
+let sortedTeams: Team[] = [];
 export default function handleProcessedGameState(processedGameState: StateModel): HandledGameState {
     const ranks: ["first", "second", "third", "fourth"] = ["first", "second", "third", "fourth"];
     const teams = [myTeam, pinkTeam, orangeTeam, purpleTeam];
-    const sortedTeams: Team[] = [];
     const colorRanks = ["color_first", "color_second", "color_third"];
 
 
     /**
      * Input handling
      */
+    function teamIndex(query: string) {
+        const teamNumber = query.substring(query.length - 1) as "1" | "2" | "3" | "4";
+        return parseInt(teamNumber, 10) - 1;
+    }
+
+    function teamColorIndex(query: string) {
+        return query.substring(query.length - 6) as string;
+    }
+
     for (const input in processedGameState.inputs) {
         switch (input) {
-            case "rollback_deposit":
+            case "rollback_deposit_1":
+            case "rollback_deposit_2":
+            case "rollback_deposit_3":
+            case "rollback_deposit_4":
                 if (processedGameState.inputs[input]) {
-                    const b = document.querySelector("#rollback_deposit")! as HTMLInputElement;
-                    rollbackLastDeposit();
+                    const b = document.querySelector(`#${input}`)! as HTMLInputElement;
+                    const team = sortedTeams[teamIndex(input)];
+                    rollbackTeamDeposit(team)
                     b.checked = false;
                     LOG_captureFrame = true;
                 }
                 break;
-            case "complete_deposits":
+            case "complete_deposit_1":
+            case "complete_deposit_2":
+            case "complete_deposit_3":
+            case "complete_deposit_4":
                 if (processedGameState.inputs[input]) {
-                    const b = document.querySelector("#complete_deposits")! as HTMLInputElement;
-                    finishDeposits();
+                    const b = document.querySelector(`#${input}`)! as HTMLInputElement;
+                    const team = sortedTeams[teamIndex(input)];
+                    finishTeamDeposit(team);
                     b.checked = false;
                     LOG_captureFrame = true;
+                }
+                break;
+            case "score_cash_F736C7":
+            case "score_cash_FD8803":
+            case "score_cash_AA41FD":
+            case "score_cash_02B9F1":
+                const inputCash = parseInt(processedGameState.inputs[input], 10)
+                if (!isNaN(inputCash) && inputCash !== -1) {
+                    // Track this input through a consensus, just an easy way to make sure we don't take the value until the user is done typing
+                    const thisColor = teamColorIndex(input)
+                    const team = sortedTeams.find(t => t.getColor === `#${thisColor}`)!;
+                    const thisConsensus = team.inputCashConsensus.certain(inputCash);
+
+                    if (thisConsensus !== -1 && thisConsensus !== null) {
+                        const b = document.querySelector(`#${input}`)! as HTMLInputElement;
+
+                        team.updateCash(thisConsensus, true);
+                        console.log(`Updated cash of team ${team.name} to ${thisConsensus}`)
+
+                        b.value = "-1";
+                        LOG_captureFrame = true;
+                    }
                 }
                 break;
             case "add_overtime":
@@ -721,8 +779,8 @@ export default function handleProcessedGameState(processedGameState: StateModel)
                     // If overtime has already been applied or there's still lots of time left in the game, hide the button
                     b.parentElement!.style.display = "none";
                 } else {
-                    // If there hasn't been overtime added and it's nearing the end of the round, show the button
-                    b.parentElement!.style.display = "block";
+                    // If there hasn't been overtime added, and it's nearing the end of the round, show the button
+                    b.parentElement!.style.display = "inline";
                 }
 
                 if (processedGameState.inputs[input]) {
@@ -754,6 +812,11 @@ export default function handleProcessedGameState(processedGameState: StateModel)
 
     });
     sortedTeams.push(remainingTeams[0]);
+
+    // sortedTeams rolls over from the last call, this keeps it down to only four records (four teams)
+    if (sortedTeams.length > 4) {
+        sortedTeams = sortedTeams.slice(sortedTeams.length - 4);
+    }
 
     const consensusTeams = TeamDraggingConsensus.consensus(sortedTeams)
     const c = consensusTeams.value || sortedTeams
@@ -904,14 +967,13 @@ export default function handleProcessedGameState(processedGameState: StateModel)
             if ((thisTeam.getDeposit &&
                 !thisTeam.getDeposit.remainingSeconds()
             ) || (DepositPoolSingleton.finishAllDeposits)) {
-                const completedAmount = thisTeam.removeDeposit()
-                DepositPoolSingleton.finishDeposit(completedAmount);
+                DepositPoolSingleton.finishTeamDeposit(thisTeam);
             }
 
-            if (DepositPoolSingleton.finishAllDeposits && DepositPoolSingleton.depositsRunning === 0) {
-                DepositPoolSingleton.finishAllDeposits = false;
-                console.log("Finished all deposits")
-            }
+            // if (DepositPoolSingleton.finishAllDeposits && DepositPoolSingleton.depositsRunning === 0) {
+            //     DepositPoolSingleton.finishAllDeposits = false;
+            //     console.log("Finished all deposits")
+            // }
 
         } catch (e) {
         }

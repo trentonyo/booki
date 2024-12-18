@@ -236,8 +236,18 @@
     }
   ],
   "inputs": {
-    "rollback_deposit": false,
-    "complete_deposits": false,
+    "rollback_deposit_1": false,
+    "rollback_deposit_2": false,
+    "rollback_deposit_3": false,
+    "rollback_deposit_4": false,
+    "complete_deposit_1": false,
+    "complete_deposit_2": false,
+    "complete_deposit_3": false,
+    "complete_deposit_4": false,
+    "score_cash_F736C7": -1,
+    "score_cash_FD8803": -1,
+    "score_cash_AA41FD": -1,
+    "score_cash_02B9F1": -1,
     "add_overtime": false
   }
 }

@@ -98,6 +98,16 @@ export class DraggingConsensus<T> {
         return output;
     }
 
+    public certain(nextValue: T) {
+        const consensus = this.consensus(nextValue);
+
+        if (consensus.frequency === this.historyLimit) {
+            return consensus.value;
+        }
+
+        return null;
+    }
+
     public flush() {
         this.history.length = 0;
     }
