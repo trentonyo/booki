@@ -4,162 +4,157 @@
 
 ### What is the relationship between the game handlers and the state models?
 
-The path that data takes starts with the **state model.** This model is the schema that defines what kind of data to look for, where/how to look for it, and what to expect.
+The path that data takes starts with the **state model**. This model is the schema that defines what kind of data to look for, where/how to look for it, and what to expect.
 
-The **state model** is what the core system uses to extract data from the images provided of the game being played. The core system then hands off that raw data to the **handler** to transform it from _data_ into _information_ by applying logic and constraints to it.
+The **state model** is used by the core system to extract data from the images provided of the game being played. The resulting raw data is handed to the **handler**, which applies validation or transformations, turning the "raw data" into actionable "information".
 
-The **handler** then extends the **state model** by adding data into it that has been validated. The **state model** is also the vessel through which inputs are passed throughout the system (since the OCR/image processing, handler, and input are all very loosely coupled).
+This separation allows each part of the system to focus on its own role: **state models** define inputs while **handlers** act upon the processed outputs.
+
+---
 
 ### Is the system designed to treat game handlers as black boxes?
 
-Yes, the `handleProcessedGameState()` function is a total black box. The writer of a game configuration is free to take the raw data from the core system and apply it as they wish to pass a `Processed Game State` to the next step as they see fit.
+Yes, the `handleProcessedGameState()` function is entirely a black box. This provides flexibility for developers defining game configurations. They can handle raw data any way they see fit, as long as the handler outputs a `Processed Game State` for downstream use.
 
-### What happens if the handler attempts to add invalid or malformed data back into the state model?
-
-The data that is added _back in_ to the state model (a "Processed Game Model") is an object returned by the `handleProcessedGameState()` function. That data is then passed to the `/data` endpoint of the API to be used for validating data (and the persistence layer in the future).  
+---
 
 ### What is the relationship between the **core system**, the **handler**, and **inputs**?
 
-**The core system**, as it is referred to, consists of the API, the image processing, and the OCR. 
+- **Core system**: Refers to the API (Express server), image processing, and OCR engine.
+- **Handler**: The functional logic that transforms OCR-processed data according to the rules defined by the state model.
+- **Inputs**: May refer to screen images (provided via API) or additional runtime interactions provided by the frontend interface.
 
-**The handler**, and its associated **game state model** are often referred to as "configurations" or "games" and are the schema by which data is defined. 
+Logical flow:
+1. The user selects a game model and starts the camera feed.
+2. Images are sent to the API, bound to the selected configuration.
+3. OCR processes images according to model-defined rules, extracting raw data.
+4. The handler transforms OCR output into verified information, updates the frontend, or sends further data to the backend.
+5. Optionally, the handler performs additional actions, like logging or image saving.
 
-**Inputs** may refer to the interactions with the **handler** afforded by the frontend interface or the screen images provided to the API.
+---
 
-An overview of the logical path that the user and/or their data takes can be represented as:
+### What happens if the handler tries to add invalid data to the state model?
 
-1. The user "starts the camera" by allowing permissions and **selects a game model**.
-2. The user begins sending a feed of images to the **API** under the selected **game model**. (image data + game state model -> core system) 
-3. The **API** processes the image and runs OCR based on the **game state model**, sending back data extracted from the image as defined by the **game state model**.
-4. The raw data returned from the **API** is passed into the **game state HANDLER**, which may update the frontend or return some data to the **API**.
-5. (optional) The **game state handler** may prompt the **API** to log some data, the image, etc.
+The returned "processed game model" from the handler is passed to APIs like `/data`. Validation layers (e.g., schemas) help ensure correctness, but this responsibility is shared between the handler developer and the system's constraints.
+
+If the state model fails validation, downstream features expecting valid data won't function correctly.
+
+---
 
 ## Backend
 
-### How does the Express server handle OCR/Image processing operations within the API?
+### How does the Express server handle OCR/Image processing operations?
 
-First, an image is POSTed to the `/game/:model` endpoint and the `:model` is looked up in the registry to select the appropriate handler. 
-Then, the image is passed to the `processGameFrame()` function which handles all image processing, OCR, and other tasks asynchronously and with worker threads as necessary. The result is then returned from the API as a JSON response.
+When an image is POSTed to `/game/:model`, the server looks up the appropriate model and handler based on the provided `:model`. The image is passed to the `processGameFrame()` function, which:
+1. Processes the image asynchronously.
+2. Invokes the OCR engine (Tesseract.js) with constraints like mask filters or regular expressions.
+3. Returns extracted data as JSON for further frontend or API use.
 
-### Are there specific limitations around using external libraries or custom styles in React components, or must everything strictly comply with Tailwind for styling?
+---
 
-Strict Tailwind compliance is not required, sometimes the easiest option for conveying meaning comes from colors pulled from the raw data for example. The biggest caveat is that any additional libraries or inline CSS that a maintainer introduces to a game configuration is their responsibility to maintain.
+### What happens if the OCR process fails or produces noisy data?
 
-### What happens if the OCR process fails or produces noisy/dirty data?
+Three layers of filtering aim to prevent invalid or noisy results:
+1. **OCR mask**: Restricts which characters can be matched by Tesseract.
+2. **Game state model constraints**: Optionally define patterns like regex validation.
+3. **Handler logic**: Validates and refines extracted data before it’s incorporated into the processed game state.
 
-There are a few gates thorough which OCR data passes, and they are (in order of appearance):
+However, errors are NOT logged, and the handler must account for possible incomplete or noisy data.
 
-1. The character mask passed to Tesseract.js (characters which the OCR engine will even try to recognize)
-2. (optional) A regular expression that is defined at the **game state model**.
-3. (optional) Logical handling within the **game state handler**.
+---
+
+### Are game state models validated against a schema?
+
+Yes, game state models are validated against TypeScript definitions and runtime checks in the server. These schemas ensure the models are correctly configured to avoid runtime failures.
+
+---
 
 ## Configuration Handling
 
-### Are game state models validated against a schema at runtime?
+### Does the system auto-load new game models or handlers upon addition?
 
-Yes, this schema is technically just a TypeScript type defined in `processGameFrame.ts`.
+No, new game configurations require **manual registration** within the backend code. This design ensures maintainers explicitly integrate and test new models before deployment.
 
-### What are the consequences of providing invalid or incomplete game state configurations?
+---
 
-> [!WARNING]
-> Great question. This needs to be investigated and summarily engineered with intent. Maybe consider checking at build, throwing errors at registration?
+### How are valid inputs defined in configurations? What happens to unsupported types?
 
-### Does the backend automatically load and apply new game models and handlers?
+Input types are defined within the `type` field of each JSON-defined landmark. Unsupported types are currently skipped, though they might be logged in future iterations.
 
-No, manual registration is required. See [configurations](configurations.md).
-
-New game configurations are not so light in design or implementation as to be thrown in on the fly. Developing a state handler can take quite a while, so it is not expected of the system to take on new configurations rapidly.
-
-### How are valid input types defined in the JSON files? What happens if an input type is not currently supported?
-
-Input types are explicitly defined in each landmark's `type` field. Any unsupported types are skipped (they are not currently logged anywhere).
+---
 
 ## Technical Workflows
 
-### How does the build process ensure compatibility between server-side code and client-side React components?
+### How does the build process ensure compatibility?
 
-The recommendation for a successful build is to use 
-
+Use:
 ```shell
 pnpm run build
 ```
+This ensures backend and frontend builds execute in the proper order per `package.json` specifications.
 
-which is maintained to perform the build steps in the appropriate order. See [package.json](package.json) for the latest build order.
-
-### If a new feature involves adding both a React component and backend logic, where should a new developer start?
-
-This is generally a matter of philosophy in this project, but the original author has had success in starting with the backend and moving to the frontend.
-
-## Running Locally
-
-### During development, do the frontend and backend environments need to be built separately and run parallel, or is there a recommended "watch mode" to simplify iterative code changes?
+For iterative development, separate builds are usually required:
+- Run the backend (e.g., via `ts-node-dev`).
+- Start the frontend using your local dev server.
 
 > [!WARNING]
-> Another great question. _Help wanted._ We desperately need a watch mode, as I've come around to learn that TypeScript is a bit of a bear for iterative monitoring without using a higher level framework. Since this project relies so much on microservices and webpack, it has presented a challenge in such a "watch mode" that is sorely needed.
+> Until this becomes the norm for developers, it can not be considered a stable workflow
+
+---
+
+### If adding both a frontend component and backend logic, where should a developer start?
+
+Best practices suggest starting with the **backend** since data models and APIs define the foundations of the feature logic. Once APIs are confirmed functional, the connected frontend UI can be layered over it.
+
+---
 
 ## TypeScript and React
 
-### In what cases is it acceptable to ignore TypeScript type definitions (e.g. using `any`)?
+### When is it acceptable to use `any` in TypeScript?
 
-ONLY in situations whereby data is passed between transport layers, e.g. to/from the API, reading a file, or any other medium other than memory. 
+Avoid using `any` unless handling **transported data** (e.g., API responses or file reads) where type information may be unavailable. Quickly cast `any` data into a defined type for safety.
 
-In addition, it is best practice to coerce this into a type as soon as possible with robust error handling as these are major points of failure.
+---
 
-### Should all Game State View components be written as functional components, or are there cases where class components are preferred?
+### Should Game State View components use functional or class components?
 
-> [!WARNING]
-> Yet another great question. If anyone well-versed in React has a better answer than this, please feel free to contribute.
+Functional components are preferred for consistency and compatibility with modern React hooks. The initial `GameStateView` structures (e.g., "The Finals: Ranked (elimination)") provide a good baseline.
 
-`GameStateView` components should follow the form defined by the first configuration for "The Finals: Ranked (elimination rounds)" for consistency.
+---
 
-## Known Limitations/Future Work
+## Known Limitations & Future Work
 
-### How will the planned persistence layer (Prisma) affect the way game state models and handlers operate?
+### Will a planned persistence layer (Prisma) impact how handlers operate?
 
-The persistence layer is planned to be _mostly_ implemented downstream of the state handler in that the processed game data will be what is persisted, as it includes the raw data as well. The aggregation of this data is not necessarily intended to be pinged for live data, but it is technically possible considering the handler is a black box written in TypeScript.
+Yes, Prisma will store processed game states (including raw OCR outputs). This move will allow historical analysis of game data while keeping live processing lightweight. All persistence logic will integrate seamlessly with handlers' outputs without affecting their internal processing rules.
 
-### Are there plans to introduce unit/integration tests?
+---
 
-Yes, likely will be limited to Jest testing of the core system. Front end testing is not planned.
+### Are automated tests planned at this stage?
 
-Cron end-to-end testing also planned as the system is technically indeterminate so observed accuracy will be desirable.
+Yes, primarily via Jest for unit testing backend logic like OCR or handler transformations. End-to-end integration tests may follow for workflow validation. Frontend coverage will not be prioritized initially.
 
-### How are developers currently expected to test changes manually in the absence of automated testing?
+---
 
-> [!WARNING]
-> Well... mostly by faith, trust, and pixie dust.
+## Debugging & Error Handling
 
-### Should game state handlers be tested?
+### When a game handler fails, how is feedback provided?
 
-Yes, and similar to other questions related to the game state handlers, it is ultimately that configuration's maintainer's responsibility.
+Currently, failures are logged to the browser console during development. Persistent error logging would be desirable for production environments, depending on future enhancements.
 
-## Performance Concerns
+---
 
-### The OCR processing with Tesseract.js is said to be CPU-intensive, are there plans to offload this for better performance?
+## Collaboration & Future-Proofing
 
-Yes, this is one of the major points of the core system that will need to be addressed. At present, no work has been done on this; but, the loosely-coupled nature of the core system will allow for this improvement at any point in development.
+### What are guidelines for maintaining compatibility during team collaboration?
 
-## Debugging and Error Handling
+Adhere to:
+1. Established TypeScript types and schemas.
+2. Correct handling of transport layer data as early as possible post-fetch or pre-send.
+3. Design reviews for significant changes to core configurations or schemas, ensuring alignment across teams.
 
-### When a game state handler fails, how is feedback provided to developers?
+---
 
-Currently, feedback is all limited to the browser console as the game state handler is run locally. Persistent logging would be desirable, but as with all things regarding the game state handler it is ultimately up to the maintainer.
+### How should developers approach adding new landmarks or input types?
 
-### Are there specific tools or libraries integrated into the project to aid in debugging?
-
-> [!WARNING]
-> See "Running Locally > During development..."
-
-## Collaboration and Future-Proofing
-
-### The documentation mentions "configuration-driven development" as a core design principle. Are there any specific guidelines for maintaining compatibility when collaborating as part of a larger team or with external contributors?
-
-See "TypeScript and React > In what case is it..." for the best answer to this question. As long as the system can consistently handle existing game state models (pending automated testing) and all failure points (edges between microservices) are well-tested and robust, we should be fine!
-
-### What steps are recommended for reviewing and maintaining documentation in the wiki?
-
-Always refer to the style of other documents and do your best to ask questions. Though, the original author is of the persuasion that a higher level of coverage by mediocre documentation is better than missing important coverage pending gorgeous docs.
-
-### When adding new features outside of the scope of the current configuration system (i.e. new landmark types), how should developers plan and structure their changes?
-
-In an open room with a quorum. New landmarks should only be added when designed and fully vetted by all maintainers. This is because the loose coupling between the core system and the game state handlers necessitates thoroughly investigating any changes to the schema.
+Additions should be discussed and vetted with maintainers to assess impact. This cautious process ensures stable integration with existing configurations.

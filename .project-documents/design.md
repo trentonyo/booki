@@ -2,145 +2,63 @@
 
 ## Overview
 
-This project is a TypeScript-powered web application combining modern frontend and backend frameworks alongside robust build and deployment tooling. The application leverages OCR (Optical Character Recognition) and handles intensive image processing, making it especially suited for capturing and analyzing game-related data in real time.
+This project is a TypeScript-powered web application combining modern frontend and backend frameworks alongside robust build and deployment tooling. The application leverages OCR (Optical Character Recognition) and handles intensive processing of image data, making it especially suited for capturing and analyzing game-related data in real time.
 
-The project utilizes configuration-driven development, using the "Game State Models/Handlers" schema defined for any given game/gamemode.
+The architecture is largely designed to be configuration-driven, where features such as **game state models** and **data feeds** dynamically adapt to game-specific JSON configuration files.
 
 ### Goals
-- **Frontend:** A modular and dynamic React-based application styled with Tailwind CSS. Configuration will largely define the appearance of the frontend.
-- **Backend:** A scalable and efficient Express server that integrates OCR and game state models (configuration).
-- **Future Support:** Maintain a scalable architecture to accommodate external collaborators and move towards GitHub Wiki for expanded documentation.
+- **Frontend:** A modular and dynamic React-based application styled with Tailwind CSS and powered by client-side routing via `react-router-dom`.
+- **Backend:** A scalable Express-based server that integrates high-performance OCR with API-first design principles.
+- **Future Flexibility:** A tech stack designed to scale and easily enable features like database integration and additional processing pipelines.
 
 ---
 
 ## Frameworks and Tools
 
 ### Core Technologies
-- **TypeScript** (Version: 4.0.0): Provides static typing, modern JS features, and code maintainability.
-- **React** (Version: 18.3.1): Used for building a modular, component-driven UI.
-- **Express** (Version: 4.18.1): Backend framework handling API endpoints, OCR management, and static asset hosting.
-- **Prisma** (Version: 5.21.1): An ORM for interacting with the project database in a type-safe manner. 
-  > [!NOTE] 
-  > There is no persistence layer yet utilized. The persistence layer will be used for training the Bayesian model. 
-- **Tailwind CSS** (Version: 3.4.14): A utility-first CSS framework for rapid UI development.
+- **TypeScript**: Enforces strong typing for maintainable code on both frontend and backend.
+- **React**: Utilized for building dynamic UIs with client-side rendering, routing, and state management.
+- **Express**: Lightweight and efficient backend framework for serving APIs, OCR integrations, and static assets.
 
 ### Additional Libraries
-- **tesseract.js** (Version: 5.1.1): Client-side OCR library for processing image text.
-- **sharp** (Version: 0.33.5): High-performance image processing for resizing and transformation.
-- **Webpack** (Version: 5.95.0): For bundling both client- and server-side code.
+- **react-router-dom**: Provides declarative, client-side routing capabilities.
+- **Tesseract.js**: A JS-based OCR engine for real-time image text extraction.
+- **Sharp**: High-performance image processing for resizing and transformation.
+- **Tailwind CSS**: Enables utility-first styling for rapid and consistent UI development.
+- **Prisma**: (Planned) A type-safe ORM to support future additions when database integration becomes necessary.
 
 ---
 
 ## Project Structure
 
-### Build System
-1. **Frontend Build**:
-    - Managed through Webpack (`webpack.config.js`).
-    - React entry point: `src/index.tsx`.
-    - Bundles JavaScript and CSS into distributable assets.
+### Anatomy of the Application
 
-2. **Backend Build**:
-    - Handled by Webpack (`webpack.server.config.js`).
-    - Processes server code (`src/server.ts`) with optimizations for Node.js using `webpack-node-externals`.
-
-3. **CSS Build**:
-    - Processes CSS with Tailwind CLI to create the main stylesheet (`output.css`).
-
-### File Structure
-- **`src/`**:
-    - Contains TypeScript and React source files.
-    - Includes separate files for client-side (`index.tsx`) and server-side (`server.ts`) entry points.
-- **`public/`**:
-    - Stores HTML templates for different pages (e.g., `index.html`, `feed.html`).
-- **`dist/`**:
-    - Output directory for built assets.
-
-### Configuration Files
-- **`tsconfig.json`**: Defines TypeScript compiler options, including ES6 compatibility and React JSX support.
-- **`tailwind.config.js`**: Specifies utility class generation for the project's CSS.
-
-### Routing
-- **Frontend**:
-    - Managed using React Router (`react-router-dom`).
-    - Available routes:
-        - `/` - Home Component.
-        - `/feed` - Screen/Game feed integration.
-        - `/data` - Data analysis for logged games (validating data).
-- **Backend**:
-    - Express provides RESTful API endpoints for:
-        - Retrieving game state models and data sets.
-        - Posting images for OCR processing.
+- **Game State Models**: Configure game-specific logic in JSON schema files under `public/stateModels`. These describe how the OCR engine and backend should process a particular game's feed.
+- **Frontend Routing**: All client-side page transitions and navigations are accomplished using React Router, defined in `App.tsx`.
+- **Backend RESTful API**: Focuses on receiving game feed data from the frontend (image data); leverages OCR processing and additional logic to return meaningful insights.
 
 ---
 
-## Backend Features
+## Game Feed and Processing Pipeline
 
-1. **OCR Management**
-    - Tesseract.js is integrated to handle text recognition from images of screens or game feeds.
-    - Efficient processing is ensured with worker pools or background tasks to manage concurrent OCR requests.
-    - Configurable thresholds or presets can be set for specific game states.
+The **game feed interface** dynamically updates based on game state models and user-configured settings. The pipeline is broadly broken into:
+1. **Game Feed Capture:** Extracts text or image-based data from a frame and posts it to the server.
+2. **OCR Processing:** The server processes a raw or filtered game frame using Tesseract OCR to extract relevant details (e.g., scoreboard, character HUD).
+3. **State Handling:** The extracted game data is further refined using game-specific logic (implemented as "game handlers").
+4. **UI Update:** The frontend updates dynamically to display data feeds in real time.
 
-2. **Game State Models**
-    - A schema-first approach, where game state models (provided as JSON files) define the expected game parameters and data fields.
-    - Dynamically loads these models to:
-        - Tailor OCR-based data extraction.
-        - Validate incoming data against defined game rules or parameters.
+### Routing Details
 
-3. **Debugging and Logging**
-    - Raw OCR data (along with metadata such as processing time and errors) can be logged for debugging.
-    - Useful for improving model definitions and OCR accuracy over time.
+#### Frontend Routes (React Router)
+```plaintext
+1. `/` - Home page
+2. `/feed` - Display live-screen feed updates
+3. `/data` - View processed configuration data
+```
 
-4. **API Endpoints**
-    - Express-based APIs for:
-        - Submitting game feed images for processing.
-        - Fetching results for processed images.
-        - Retrieving and listing defined game state models.
-
-5. **Error and Performance Handling**
-    - Graceful handling of OCR failures with appropriate error responses.
-    - Efficient processing of OCR tasks to optimize server performance with background tasks or worker pools.
-
----
-
-## Frontend Features
-
-1. **Dynamic UI Configuration**
-    - The user interface adapts dynamically based on the loaded game state models.
-    - React components are defined per game schema.
-
-2. **Game Feed Interface**
-    - The `/feed` route provides a live camera/game feed view, allowing users to upload images directly for processing.
-    - Results are displayed in real-time, using WebSocket connections for seamless updates.
-
-3. **Data Validation**
-    - The `/data` route enables users to review, manage, and validate logged game data.
-    - Provides interface elements to correct errors or export data.
-
-4. **Customization**
-    - Tailwind CSS ensures rapid styling changes for UI customization.
-    - React's component-based architecture allows adding new visualizations or features without major rework.
-
----
-
-## Future Features and Improvements
-
-1. **Database Integration**
-    - Plan to implement persistent storage (e.g., PostgreSQL) for:
-        - Dataset storage.
-        - Training and updating Bayesian models.
-
-2. **Testing**
-    - Introduce both unit and integration tests:
-        - Jest for backend testing.
-        - React Testing Library for frontend component testing.
-
-3. **Performance Improvements**
-    - Leverage worker threads to execute CPU-heavy OCR tasks with efficient multitasking.
-
-4. **Scalability**
-    - Support distributed processing by offloading OCR tasks to cloud services or external workers.
-    - Considerations for latency must be made.
-
-5. **Enhanced Deployment**
-    - Provide a Docker setup for easier deployment and consistent environments.
-    - Automate builds and deployments with CI/CD pipelines.
+#### Backend Routes (Express)
+```plaintext
+- `/api/game-state-models`: Fetch game state configurations.
+- `/api/data-sets`: Retrieve processed datasets for analysis.
+- `/game/:model`: Process and respond to OCR-derived details for the selected game model.
+```
