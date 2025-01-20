@@ -465,7 +465,7 @@ class DepositPool {
 
             for (let i = 0; i < otherTeams.length; i++) {
                 const otherTeam = otherTeams[i];
-                if (otherTeam.getDeposit && otherTeam.getDeposit.value === amount) {
+                if (otherTeam.getDeposit && otherTeam.getDeposit.value === amount) {  // TODO need to use more evidence rather than just taking the first one the matches value
                     matchingOtherTeam = otherTeams[i];
                     break;
                 }
@@ -575,7 +575,7 @@ class DepositPool {
                     }
 
                     console.warn(`💰STOLEN DOUBLE: ${team.name} stole $${amount} from ${matchingOtherTeam!} to bring their total up to $${team.getDeposit?.value}`);
-                    team.stealDepositFrom(matchingOtherTeam!);
+                    team.stealDepositFrom(matchingOtherTeam!);  // TODO need to use more evidence rather than just taking the first one the matches value
                     LOG_captureFrame = true;
 
                 } else {
