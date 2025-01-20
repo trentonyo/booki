@@ -56,9 +56,13 @@ Booki takes periodic images from your display and runs them through high-perform
    pnpm install
    ```
 
+> [!WARNING]
+> This proof-of-concept version requires manually rebuilding after changes, there's no hot reload
+
 4. 🖥️ **Run the Project**:
     - **Development Mode**:
       ```bash
+      pnpm run build
       pnpm run dev
       ```
     - **Production**: 
