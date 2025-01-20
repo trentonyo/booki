@@ -6,6 +6,16 @@ html {
     @apply bg-slate-200
 }
 
+.submit_data {
+    position: fixed;
+    right: 6px;
+    bottom: 4px;
+
+    padding: 2rem;
+    background-color: #3875c5;
+    color: white;
+}
+
 .hidden {
     display: none;
 }

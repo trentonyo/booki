@@ -1,11 +1,13 @@
 import React, {useEffect, useState} from "react";
 import {DataValidationFrame, Datum} from "../../scripts/stateHandlers/thefinals_ranked_view";
+import {Link} from "react-router-dom";
 
 interface DataSetFrameProps {
+    dataSetName: string;
     rawData: string;
 }
 
-const DataSetFrame: React.FC<DataSetFrameProps> = ({rawData}) => {
+const DataSetFrame: React.FC<DataSetFrameProps> = ({rawData, dataSetName}) => {
     const dataLines = rawData.split("\n");
 
     return (
@@ -22,15 +24,24 @@ const DataSetFrame: React.FC<DataSetFrameProps> = ({rawData}) => {
 
             const checkedPercent = numberOfInputs > 0 ? `${(checked / numberOfInputs * 100).toFixed(2)}%` : '--';
 
-            console.log(`(${checkedPercent} accuracy) Submitted ${checked} of ${numberOfInputs} inputs`);
-        }}>
-            <label htmlFor="dataSetName">Data Set Name:</label>
+            console.log(`${dataSetName}: (${checkedPercent} accuracy) Submitted ${checked} of ${numberOfInputs} inputs`);
+
+            const fileContent = `${dataSetName}: (${checkedPercent} accuracy) Submitted ${checked} of ${numberOfInputs} inputs`;
+            const blob = new Blob([fileContent], {type: 'text/plain'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${dataSetName}_output.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }} style={{position: "relative"}}>
+            <label htmlFor="dataSetName">Data Set Name: {dataSetName}</label>
             <div className="flex flex-col gap-4">
                 {dataLines.map((line, index) => {
                     return <div key={index}><DatumFrame datum={line}/></div>
                 })}
             </div>
-            <input type="submit" value="Submit"/>
+            <input className="submit_data" type="submit" value="Submit"/>
         </form>
     );
 }
@@ -86,9 +97,10 @@ const DataClientComponent: React.FC = () => {
 
     return (
         <div>
+            <Link to={"/"}>Home</Link>
             <h1>Data Validation</h1>
             {fetchedData ? <div>Data fetched successfully.</div> : <div>Loading data...</div>}
-            {fetchedData ? <DataSetFrame rawData={fetchedData}/> : <div>No data found.</div>}
+            {fetchedData ? <DataSetFrame dataSetName={dataSetName ? dataSetName : ""} rawData={fetchedData}/> : <div>No data found.</div>}
         </div>
     );
 };

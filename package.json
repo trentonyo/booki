@@ -9,6 +9,7 @@
     "build:tailwind": "tailwindcss build src/input.css -o src/output.css",
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
+    "redev": "pnpm run build; ts-node-dev src/server.ts",
     "start:react": "webpack serve --config webpack.config.js"
   },
   "dependencies": {

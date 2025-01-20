@@ -558,6 +558,10 @@ video {
   position: static;
 }
 
+.relative {
+  position: relative;
+}
+
 .col-span-2 {
   grid-column: span 2 / span 2;
 }
@@ -770,6 +774,15 @@ video {
 html {
   --tw-bg-opacity: 1;
   background-color: rgb(226 232 240 / var(--tw-bg-opacity));
+}
+
+.submit_data {
+  position: fixed;
+  right: 6px;
+  bottom: 4px;
+  padding: 2rem;
+  background-color: #3875c5;
+  color: white;
 }
 
 .hidden {
