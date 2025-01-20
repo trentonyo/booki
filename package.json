@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && pnpm run build:react && pnpm run build:server",
+    "build": "tsc && pnpm run build:react && pnpm run build:tailwind && pnpm run build:server",
     "build:react": "webpack --config webpack.config.js",
     "build:server": "webpack --config webpack.server.config.js",
+    "build:tailwind": "tailwindcss build src/input.css -o src/output.css",
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
+    "redev": "pnpm run build; ts-node-dev src/server.ts",
     "start:react": "webpack serve --config webpack.config.js"
   },
   "dependencies": {

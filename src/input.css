@@ -6,6 +6,44 @@ html {
     @apply bg-slate-200
 }
 
+.submit_data {
+    position: fixed;
+    right: 6px;
+    bottom: 4px;
+
+    padding: 2rem;
+    background-color: #3875c5;
+    color: white;
+}
+
 .hidden {
     display: none;
+}
+
+.pill-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background-color: #ddd; /* Default background color */
+    color: #333; /* Text color */
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.pill-checkbox input[type="checkbox"] {
+    display: none; /* Hide the native checkbox */
+}
+
+.pill-checkbox input[type="checkbox"]:checked + span {
+    background-color: #666; /* Darker background when checked */
+    color: white; /* Lighter text color when checked */
+}
+
+.pill-checkbox span {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
 }

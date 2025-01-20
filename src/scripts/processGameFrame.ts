@@ -81,11 +81,19 @@ type Constraints = {
     };
 };
 
+export type HandledGameState = null | {
+    sessionID: string;
+    [key: string]: any;
+};
+
 // Define the StateModel type composing Constraints, an array of LandMark, and an optional game logic function
 export type StateModel = {
     constraints: Constraints;
     gameState: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA)[];
-    inputs?: { [key: string]: any }
+    inputs?: { [key: string]: any };
+    captureFrame?: boolean;
+    sessionID?: string;
+    handledGameState?: HandledGameState; // ONLY to be updated by a stateHandler function, is returned for data logging
 };
 
 /****************
@@ -248,24 +256,17 @@ async function recognizeColorCountA(landMark: LandMarkColorCountA, imageBuffer: 
     return {name: landMark.name, text: JSON.stringify(output)};
 }
 
-// function debugWriteImage(imageBuffer: Buffer, landMark: (LandMarkOCR | LandMarkColor | LandMarkColorCount | LandMarkColorCountA), stateModel: StateModel, step: number) {
-function debugWriteImage(imageBuffer: Buffer, landMark: LandMarkOCR, stateModel: StateModel, step: number) {
-    if (
-        ["score_firstCash", "score_secondCash", "score_thirdCash", "score_fourthCash"].includes(landMark.name)
-        && landMark.VALUE
-        && landMark.VALUE.length > 6
-    ) {
-        const regex = new RegExp(landMark.validRegex!);
-        const result = regex.exec(landMark.VALUE.trim());
+export function debugWriteImage(imageBuffer: Buffer, modelDisplayName: string, datumName: string, stateModel: StateModel) {
+    const nameWords = modelDisplayName.split(" ");
+    const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
+        .toUpperCase()
+        .replace(/[^A-Z]+/g, '');
+    const imageName = `${encodedName}_${datumName}`
+    const logName = `${encodedName}_${stateModel.sessionID}`
+    writeFileSync(`.debug/${imageName}.png`, imageBuffer, {flag: 'w'});
 
-        if (result) {
-            const nameWords = stateModel.constraints.displayName.split(" ");
-            const encodedName = nameWords.map(word => word.substring(0, 1)).join("")
-                .toUpperCase()
-                .replace(/[^A-Z]+/g, '');
-            writeFileSync(`.debug/RAW_${encodedName}_${landMark.name}_${step}_${result[0]}.png`, imageBuffer, {flag: 'w'});
-        }
-    }
+    const log = `${imageName}\\${encodeURIComponent(JSON.stringify(stateModel))}\n`
+    writeFileSync(`.debug/${logName}_log.txt`, log, {flag: 'a'});
 }
 
 // Step allows for spreading recognize jobs out per landmark
@@ -304,7 +305,6 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
                 console.error(`Unhandled landmark type!`);
                 return { name: "ERROR", text: "ERROR" };
         }
-
     });
 
     const landMarkNameTextPairs = await Promise.all(recognizePromises);
@@ -314,14 +314,14 @@ export async function processGameFrame(dataURL: string, stateModel: StateModel, 
             const matchingLandMark = output.gameState.find(landMark => landMark.name === landMarkNameTextPair.name);
             if (matchingLandMark) {
                 matchingLandMark.VALUE = landMarkNameTextPair.text;
-
-                // TODO debug
-                if (matchingLandMark.type === "ocr" && matchingLandMark.validRegex) {
-                    // debugWriteImage(rawImageBuffer, matchingLandMark, stateModel, step);
-                }
             }
         }
     }
+
+    // if (stateModel.captureFrame) {
+    //     const name = `${new Date().toLocaleString('en-CA', {hour12: false}).replace(/[^a-zA-Z0-9]/g, '_')}_raw`;
+    //     debugWriteImage(rawImageBuffer, name, stateModel);
+    // }
 
     step++;
     return output;

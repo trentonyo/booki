@@ -1,8 +1,8 @@
-import {LandMarkOCR, StateModel} from "./processGameFrame";
+import {LandMarkOCR, StateModel, HandledGameState} from "./processGameFrame";
 import {Rectangle} from "tesseract.js";
 
 //  IMPORTANT! See /server.ts for stateModels
-const handlers: { [modelName: string]: (processedGameState: StateModel) => void } = {
+const handlers: { [modelName: string]: (processedGameState: StateModel) => HandledGameState } = {
     "default": require("./stateHandlers/default").default,
     "thefinals_ranked": require("./stateHandlers/thefinals_ranked").default,
 }
@@ -11,7 +11,9 @@ function isLandmarkWithValidRegex(landmark: any): landmark is LandMarkOCR {
     return landmark.hasOwnProperty('validRegex');
 }
 
-export async function startCamera(modelName: string, stateModel: StateModel): Promise<void> {
+export async function startCamera(modelName: string, stateModel: StateModel, drawLandmarkBounds = false): Promise<void> {
+    let handledGameState: HandledGameState = null;
+
     const constraints = {
         video: {
             width: stateModel.constraints.width,
@@ -62,16 +64,16 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
     canvas.height = maxY;
     const ctx = canvas.getContext('2d');
 
-    function captureFrame() {
+    function captureFrameAndRunHandler() {
         ctx!.drawImage(video, minX, minY, maxX, maxY, 0, 0, maxX, maxY);
 
-        // Draw bounding boxes for each landmark TODO Debug
-        /*
-        ctx!.strokeStyle = "#ff0059"
-        for (const debugRect of debugRects) {
-            ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);
+        // Draw bounding boxes for each landmark
+        if (drawLandmarkBounds) {
+            ctx!.strokeStyle = "#ff0059"
+            for (const debugRect of debugRects) {
+                ctx!.strokeRect(debugRect.left - minX, debugRect.top - minY, debugRect.width, debugRect.height);
+            }
         }
-        // */
 
         const dataURL = canvas.toDataURL('image/png');
 
@@ -83,7 +85,8 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
             body: JSON.stringify({
                 image: dataURL,
                 minX: minX,
-                minY: minY
+                minY: minY,
+                captureFrame: handledGameState,
             })
         }).then(response => response.json())
             .then(async result => {
@@ -132,18 +135,32 @@ export async function startCamera(modelName: string, stateModel: StateModel): Pr
 
                 // Load and execute the specialized per-game script
                 try {
-                    handlers[modelName](processedStateModel);
+                    handledGameState = handlers[modelName](processedStateModel);
                 } catch (error) {
                     console.warn(`Falling back to default handler because specialized script for ${modelName} could not be run:`, error);
-                    handlers["default"](processedStateModel);
+                    handledGameState = handlers["default"](processedStateModel);
+                }
+
+                if (handledGameState) {
+                    fetch(`http://localhost:3000/api/data/${modelName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            image: dataURL,
+                            handledGameState: handledGameState
+                        })
+                    })
+                        .catch(error => console.error('Error logging data:', error));
                 }
             })
             .catch(error => console.error('Error:', error));
 
         setTimeout(() => {
-            requestAnimationFrame(captureFrame);
+            requestAnimationFrame(captureFrameAndRunHandler);
         }, constraints.performance.requestDelay);
     }
 
-    captureFrame();
+    captureFrameAndRunHandler();
 }
