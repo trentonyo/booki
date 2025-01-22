@@ -14,23 +14,30 @@ const DataSetFrame: React.FC<DataSetFrameProps> = ({rawData, dataSetName}) => {
         <form onSubmit={(e) => {
             e.preventDefault();
             const form = e.target as HTMLFormElement;
-            const formData = new FormData(form);
-            const numberOfInputs = form.querySelectorAll('input').length;
-            const formEntries = formData.entries();
+
+            // Select form data
+            const rawInputs = form.querySelectorAll('input');
+            // const formEntries = formData.entries();
+
+            // Build up the validated data (checked = number validated)
             let checked = 0;
-            for (const _ of formEntries) {
-                checked++;
+            let fileContent = ""
+            for (const input of rawInputs) {
+                if (input.checked) checked++;
+
+                fileContent += `${input.name},${input.checked},${input.dataset.datumValue}\n`
             }
 
-            const checkedPercent = numberOfInputs > 0 ? `${(checked / numberOfInputs * 100).toFixed(2)}%` : '--';
+            const checkedPercent = rawInputs.length > 0 ? `${(checked / rawInputs.length * 100).toFixed(2)}%` : '--';
 
-            console.log(`${dataSetName}: (${checkedPercent} accuracy) Submitted ${checked} of ${numberOfInputs} inputs`);
+            console.log(`${dataSetName}: (${checkedPercent} accuracy) Submitted ${checked} of ${rawInputs.length} inputs`);
 
-            const fileContent = `${dataSetName}: (${checkedPercent} accuracy) Submitted ${checked} of ${numberOfInputs} inputs`;
+            fileContent = `${dataSetName}: (${checkedPercent} accuracy) Submitted ${checked} of ${rawInputs.length} inputs,,\n${fileContent}`;
+
             const blob = new Blob([fileContent], {type: 'text/plain'});
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `${dataSetName}_output.txt`;
+            link.download = `${dataSetName}_output.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
