@@ -238,7 +238,8 @@ export class PredictorBayesianTimeBased {
     private calculateWinProbabilities(
         scores: number[],
         currentTime: number,
-        momentumFactors?: number[]
+        momentumFactors?: number[],
+        method: "linear" | "sigmoid" = "linear"
     ): number[] {
         /**
          * Calculate win probabilities for each team given current game state
@@ -246,6 +247,7 @@ export class PredictorBayesianTimeBased {
 
             // Calculate score-based likelihoods
         let scoreLikelihoods = this.calculateScoreLikelihood(scores, currentTime);
+        console.warn("scoreLikelihoods: ", scoreLikelihoods)
 
         // Apply momentum factors if provided
         if (momentumFactors) {
@@ -256,40 +258,53 @@ export class PredictorBayesianTimeBased {
 
         // Calculate time remaining impact
         const timeFactor = this.calculateTimeRemainingFactor(currentTime);
+        console.warn("timeFactor: ", timeFactor)
 
         // Calculate current score advantages
         const meanScore = scores.reduce((a, b) => a + b, 0) / scores.length;
         const scoreAdvantages = scores.map(score =>
             Math.exp((score - meanScore) * timeFactor * 0.1)
         );
+        console.warn("meanScore: ", meanScore)
+        console.warn("scoreAdvantages: ", scoreAdvantages)
 
         // Combine all factors using Bayes' theorem
         const posteriorNominal = this.prior.map((prior, i) =>
             prior * scoreLikelihoods[i] * scoreAdvantages[i]
         );
+        console.warn("posteriorNominal: ", posteriorNominal)
 
         // Normalize to get probabilities
-        return normalizeArray(posteriorNominal);
+        return normalizeArray(posteriorNominal, method);
     }
 
     public calculateNewPriors(
         scores: number[],
         currentTime: number,
-        momentumFactors?: number[]
+        momentumFactors?: number[],
+        method: "linear" | "sigmoid" = "linear"
     ): number[] {
-        const newPrior = this.calculateWinProbabilities(scores, currentTime, momentumFactors);
+        const newPrior = this.calculateWinProbabilities(scores, currentTime, momentumFactors, method);
         this.updatePriors(newPrior);
         return newPrior;
     }
 }
 
 // Utility function to normalize an array of numbers
-export function normalizeArray(arr: number[], method: ("linear" | "sigmoid") = "linear"): number[] {
+export function normalizeArray(
+    arr: number[],
+    method: "linear" | "sigmoid" = "linear"
+): number[] {
     const min = Math.min(...arr);
     const max = Math.max(...arr);
 
     if (method === "linear") {
-        return arr.map(value => (value - min) / (max - min));
+        const denom = max - min === 0 ? 1 : max - min;
+        if (max - min === 0) {
+            // All elements are the same; return equal proportions summing to 1
+            return arr.map(() => 1 / arr.length);
+        }
+        return arr.map(value => (value - min) / denom);
     } else if (method === "sigmoid") {
         return arr.map(value => 1 / (1 + Math.exp(-value)));
     } else {

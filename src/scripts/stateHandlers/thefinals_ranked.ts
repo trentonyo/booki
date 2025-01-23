@@ -1,6 +1,6 @@
 import {ColorsAndThresholds, HandledGameState, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
-import {DraggingAverage, DraggingConsensus, SuggestTimer} from "../stateHandlerUtil";
+import {DraggingAverage, DraggingConsensus, PredictorBayesianTimeBased, SuggestTimer} from "../stateHandlerUtil";
 
 /**
  * Set up the page
@@ -652,6 +652,8 @@ const purpleTeam = new Team("#AA41FD", "#BD9CE4", "Purple Team", "fourth")
 
 const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
 
+const GamePredictor = new PredictorBayesianTimeBased([1, 1, 1, 1], RULES.lengthOfGame, 34792, 9691.360777)
+
 // Increased stable suggestion minimum 2 -> 4
 const RespawnTimers = [
     new SuggestTimer(RULES.respawnTime, false, 8, 4),
@@ -1112,6 +1114,17 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         console.warn("'#team_slots' not found, looking again")
         teamSlots = document.getElementById("team_slots");
     }
+
+    // Predictor readout
+    const consistentTeams = [
+        myTeam.cash != 0 ? myTeam.cash : 1,
+        orangeTeam.cash != 0 ? orangeTeam.cash : 1,
+        pinkTeam.cash != 0 ? pinkTeam.cash : 1,
+        purpleTeam.cash != 0 ? purpleTeam.cash : 1
+    ]
+    const newPriors = GamePredictor.calculateNewPriors(consistentTeams, gameTimer.remaining!);
+    // TODO need to prevent zeroes from leeching in
+    console.log(newPriors)
 
     if (!LOG_captureTimer.remaining || LOG_captureTimer.remaining <= 0) {
         LOG_captureFrame = true;
