@@ -1,6 +1,12 @@
 import {ColorsAndThresholds, HandledGameState, LandMarkColorCountA, LandMarkOCR, StateModel} from "../processGameFrame";
 import {colorDistance} from "../colorUtil";
-import {DraggingAverage, DraggingConsensus, PredictorBayesianTimeBased, SuggestTimer} from "../stateHandlerUtil";
+import {
+    DraggingAverage,
+    DraggingConsensus,
+    normalizeArray,
+    PredictorBayesianTimeBased,
+    SuggestTimer
+} from "../stateHandlerUtil";
 
 /**
  * Set up the page
@@ -43,6 +49,9 @@ const SETTINGS = {
     timerAdjustment: -1,
     rejectedCashStaleThreshold: 10
 }
+
+const BayesianTimer = new SuggestTimer(RULES.lengthOfGame / 24);
+BayesianTimer.start()
 
 function commonPrefixLength(str1: string, str2: string): number {
     let i = 0;
@@ -200,6 +209,8 @@ class Team {
     }
 
     private setCash(amount: number) {
+        if (amount > 1000000) return
+
         this.cash = amount
         this.cashDraggingConsensus.flush();
         this.rejectedCashUpdates = 0;
@@ -652,7 +663,7 @@ const purpleTeam = new Team("#AA41FD", "#BD9CE4", "Purple Team", "fourth")
 
 const TeamDraggingConsensus = new DraggingConsensus([] as Team[], 15, 5, 10)
 
-const GamePredictor = new PredictorBayesianTimeBased([1, 1, 1, 1], RULES.lengthOfGame, 34792, 9691.360777)
+const GamePredictor = new PredictorBayesianTimeBased([1, 1, 1, 1], RULES.lengthOfGame, 42, 16)
 
 // Increased stable suggestion minimum 2 -> 4
 const RespawnTimers = [
@@ -1122,9 +1133,42 @@ export default function handleProcessedGameState(processedGameState: StateModel)
         pinkTeam.cash != 0 ? pinkTeam.cash : 1,
         purpleTeam.cash != 0 ? purpleTeam.cash : 1
     ]
-    const newPriors = GamePredictor.calculateNewPriors(consistentTeams, gameTimer.remaining!);
-    // TODO need to prevent zeroes from leeching in
-    console.log(newPriors)
+    const consistentTeamNames = [
+        myTeam.name,
+        orangeTeam.name,
+        pinkTeam.name,
+        purpleTeam.name
+    ]
+
+    if (!BayesianTimer.remaining || BayesianTimer.remaining <= 0) {
+        const newPriors = GamePredictor.calculateNewPriors(consistentTeams, gameTimer.remaining!, undefined, "none");
+        
+        const lerp = gameTimer.remaining! / RULES.lengthOfGame;
+        const beginning = [0.25, 0.25, 0.25, 0.25];
+
+
+        let interpolatedPriors = beginning.map((startValue, index) => {
+            const endValue = newPriors[index];
+            return startValue + lerp * (endValue - startValue);
+        });
+
+        const sum = interpolatedPriors.reduce((a, b) => a + b, 0);
+
+        interpolatedPriors = interpolatedPriors.map((value) => {
+            return value / sum;
+        });
+
+        // TODO need to prevent zeroes from leaching in
+        const debug = interpolatedPriors.map((value, index) => {
+            const percentage = (value * 100).toFixed(2) + "%";
+            return `${consistentTeamNames[index]}: ${percentage}`;
+        })
+        console.log(sum, debug)
+        GamePredictor.setPriors(interpolatedPriors);
+
+        BayesianTimer.stop();
+        BayesianTimer.start();
+    }
 
     if (!LOG_captureTimer.remaining || LOG_captureTimer.remaining <= 0) {
         LOG_captureFrame = true;

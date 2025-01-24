@@ -193,6 +193,8 @@ export class SuggestTimer {
 
 }
 
+export type NormalizeMethods = "linear" | "sigmoid" | "none";
+
 export class PredictorBayesianTimeBased {
     private readonly numberOfTeams: number;
     private prior: number[];
@@ -239,7 +241,7 @@ export class PredictorBayesianTimeBased {
         scores: number[],
         currentTime: number,
         momentumFactors?: number[],
-        method: "linear" | "sigmoid" = "linear"
+        method: NormalizeMethods = "linear"
     ): number[] {
         /**
          * Calculate win probabilities for each team given current game state
@@ -263,14 +265,14 @@ export class PredictorBayesianTimeBased {
         // Calculate current score advantages
         const meanScore = scores.reduce((a, b) => a + b, 0) / scores.length;
         const scoreAdvantages = scores.map(score =>
-            Math.exp((score - meanScore) * timeFactor * 0.1)
+            (score - meanScore) / Math.pow(timeFactor, 2)
         );
         console.warn("meanScore: ", meanScore)
         console.warn("scoreAdvantages: ", scoreAdvantages)
 
         // Combine all factors using Bayes' theorem
         const posteriorNominal = this.prior.map((prior, i) =>
-            prior * scoreLikelihoods[i] * scoreAdvantages[i]
+            (prior * scoreLikelihoods[i] * scoreAdvantages[i]) + (1 / scores.length)
         );
         console.warn("posteriorNominal: ", posteriorNominal)
 
@@ -282,18 +284,22 @@ export class PredictorBayesianTimeBased {
         scores: number[],
         currentTime: number,
         momentumFactors?: number[],
-        method: "linear" | "sigmoid" = "linear"
+        method: NormalizeMethods = "linear"
     ): number[] {
         const newPrior = this.calculateWinProbabilities(scores, currentTime, momentumFactors, method);
         this.updatePriors(newPrior);
         return newPrior;
+    }
+
+    public setPriors(priors: number[]): void {
+        this.prior = priors;
     }
 }
 
 // Utility function to normalize an array of numbers
 export function normalizeArray(
     arr: number[],
-    method: "linear" | "sigmoid" = "linear"
+    method: NormalizeMethods = "linear"
 ): number[] {
     const min = Math.min(...arr);
     const max = Math.max(...arr);
@@ -307,6 +313,8 @@ export function normalizeArray(
         return arr.map(value => (value - min) / denom);
     } else if (method === "sigmoid") {
         return arr.map(value => 1 / (1 + Math.exp(-value)));
+    } else if (method === "none") {
+        return arr;
     } else {
         throw new Error(`Unknown normalization method: ${method}`);
     }
