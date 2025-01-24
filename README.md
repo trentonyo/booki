@@ -11,6 +11,9 @@ Booki takes periodic images from your display and runs them through high-perform
 
 ---
 
+> [!IMPORTANT]
+> This proof of concept will no longer be maintained when a minimum viable product is reached, a polished version will be pursued
+
 ## ✨ **Features**
 
 ### 🔍 **Core Functionality**
